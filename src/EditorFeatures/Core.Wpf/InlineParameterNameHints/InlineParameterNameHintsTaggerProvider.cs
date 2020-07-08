@@ -24,14 +24,12 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
     internal class InlineParameterNameHintsTaggerProvider : IViewTaggerProvider
     {
         private readonly IBufferTagAggregatorFactoryService _bufferTagAggregatorFactoryService;
-        public readonly IClassificationFormatMapService ClassificationFormatMapService;
 
         [ImportingConstructor]
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
         public InlineParameterNameHintsTaggerProvider(IBufferTagAggregatorFactoryService bufferTagAggregatorFactoryService, [Import] IClassificationFormatMapService classificationFormatMapService)
         {
             _bufferTagAggregatorFactoryService = bufferTagAggregatorFactoryService;
-            this.ClassificationFormatMapService = classificationFormatMapService;
         }
 
         /*
@@ -45,7 +43,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
             var tagAggregator = _bufferTagAggregatorFactoryService.CreateTagAggregator<InlineParameterNameHintDataTag>(buffer);
-            return new InlineParameterNameHintsTagger(this, textView, buffer, tagAggregator) as ITagger<T>;
+            return new InlineParameterNameHintsTagger(textView, buffer, tagAggregator) as ITagger<T>;
         }
     }
 }

@@ -23,12 +23,12 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         /// Uses PositionAffinity.Successor because we want the tag to be associated with the following character
         /// </summary>
         /// <param name="text">The name of the parameter associated with the argument</param>
-        public InlineParameterNameHintsTag(string text, double lineHeight, TextFormattingRunProperties format)
-            : base(CreateElement(text, lineHeight, format), removalCallback: null, PositionAffinity.Successor)
+        public InlineParameterNameHintsTag(string text, double lineHeight)
+            : base(CreateElement(text, lineHeight), removalCallback: null, PositionAffinity.Successor)
         {
         }
 
-        private static UIElement CreateElement(string text, double lineHeight, TextFormattingRunProperties format)
+        private static UIElement CreateElement(string text, double lineHeight)
         {
             // Constructs the hint block which gets assigned parameter name, a normal fontstyle, and sets the padding 
             // space around the block to 0
@@ -38,8 +38,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontStyle = FontStyles.Normal,
-                FontFamily = format.Typeface.FontFamily, //new System.Windows.Media.FontFamily("Consolas"),
-                FontSize = format.FontRenderingEmSize - 1,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 9,
                 Padding = new Thickness(0),
                 Background = System.Windows.Media.Brushes.Lavender,
                 Foreground = System.Windows.Media.Brushes.Gray
