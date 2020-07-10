@@ -55,7 +55,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
                 Height = lineHeight,
                 Child = block,
             };
-            block.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            //block.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
             border.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
             return border;
             //return block;
