@@ -6,6 +6,7 @@
 
 using System.Linq;
 using System.Threading;
+using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 
@@ -59,7 +60,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Extensions
                 return null;
             }
 
-            var symbol = semanticModel.GetSymbolInfo(invocableExpression, cancellationToken).Symbol;
+            var symbolInfo = semanticModel.GetSymbolInfo(invocableExpression, cancellationToken);
+            var symbol = symbolInfo.Symbol;
+            if (symbol == null && symbolInfo.CandidateSymbols.Length == 1)
+            {
+                symbol = symbolInfo.CandidateSymbols[0];
+            }
             if (symbol == null)
             {
                 return null;
