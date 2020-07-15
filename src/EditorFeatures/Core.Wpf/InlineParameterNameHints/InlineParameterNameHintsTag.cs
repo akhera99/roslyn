@@ -59,7 +59,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(0, 0, 5, 0),
                 Height = lineHeight - (0.25 * lineHeight),
-                CornerRadius = new CornerRadius(2),
+                CornerRadius = new CornerRadius(2)
             };
 
             border.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));

@@ -65,10 +65,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Extensions
             if (symbol == null && symbolInfo.CandidateSymbols.Length == 1)
             {
                 symbol = symbolInfo.CandidateSymbols[0];
-            }
-            if (symbol == null)
-            {
-                return null;
+                if (symbol == null)
+                {
+                    return null;
+                }
             }
 
             var parameters = symbol.GetParameters();
