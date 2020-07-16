@@ -6,6 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
+using Microsoft.VisualStudio.Imaging.Interop;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
@@ -24,6 +27,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         private readonly ITagAggregator<InlineParameterNameHintDataTag> _tagAggregator;
         private readonly ITextBuffer _buffer;
         private readonly ITextView _textView;
+        private readonly ForegroundThreadAffinitizedObject _threadAffinitizedObject;
 
         /// <summary>
         /// _cache stores the parameter hint tags in a global location 
@@ -44,6 +48,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         public InlineParameterNameHintsTagger(InlineParameterNameHintsTaggerProvider taggerProvider, ITextView textView, ITextBuffer buffer, ITagAggregator<InlineParameterNameHintDataTag> tagAggregator)
         {
             _cache = new List<ITagSpan<IntraTextAdornmentTag>>();
+            _threadAffinitizedObject = new ForegroundThreadAffinitizedObject(taggerProvider.ThreadingContext);
             _textView = textView;
             _buffer = buffer;
             _tagAggregator = tagAggregator;
@@ -55,6 +60,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
 
         private void OnClassificationFormatMappingChanged(object sender, EventArgs e)
         {
+            _threadAffinitizedObject.AssertIsForeground();
             if (_format != null)
             {
                 _format = null;
@@ -76,20 +82,27 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         {
             get
             {
+                _threadAffinitizedObject.AssertIsForeground();
                 _format ??= _formatMap.GetTextProperties(_hint);
-
                 return _format;
             }
         }
 
         public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
-            if (spans.Count == 0)
+            if (spans == null || spans.Count == 0)
             {
-                return Array.Empty<ITagSpan<IntraTextAdornmentTag>>();
+                return Array.Empty<ITagSpan<IntraTextAdornmentTag>>(); //yield break;
             }
 
             var snapshot = spans[0].Snapshot;
+            /*
+            var translatedSpans = new NormalizedSnapshotSpanCollection(spans.Select(span => span.TranslateTo(snapshot, SpanTrackingMode.EdgeExclusive)));
+            foreach (var tagSpan in GetAdornmentTagsOnSnapshot(translatedSpans))
+            {
+
+            }
+            */
             if (_cache.Count == 0 || snapshot != _cacheSnapshot)
             {
                 // Calculate UI elements
@@ -112,9 +125,20 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
                     }
                 }
             }
-
             return _cache;
         }
+        /*
+
+        private IEnumerable<TagSpan<IntraTextAdornmentTag>> GetAdornmentTagsOnSnapshot(NormalizedSnapshotSpanCollection spans)
+        {
+            if (spans.Count == 0)
+            {
+                yield break;
+            }
+
+            var snapshot
+        }
+        */
 
         public void Dispose()
         {
