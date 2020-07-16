@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
@@ -38,6 +39,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         private readonly IClassificationFormatMap _formatMap;
         private TextFormattingRunProperties? _format;
         private readonly IClassificationType _hint;
+        private readonly IToolTipPresenter _toolTipPresenter;
 
         public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
 
@@ -47,6 +49,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             _textView = textView;
             _buffer = buffer;
             _tagAggregator = tagAggregator;
+            _toolTipPresenter = taggerProvider.ToolTipService.CreatePresenter(textView);
             _formatMap = taggerProvider.ClassificationFormatMapService.GetClassificationFormatMap(textView);
             _hint = taggerProvider.ClassificationTypeRegistryService.GetClassificationType(InlineParameterNameHintsTag.TagId);
             _formatMap.ClassificationFormatMappingChanged += this.OnClassificationFormatMappingChanged;
