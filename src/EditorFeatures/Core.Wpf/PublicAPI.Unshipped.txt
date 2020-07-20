@@ -1,1 +1,2 @@
-
+Microsoft.CodeAnalysis.Editor.InlineParameterNameHints.InlineParameterNameHintsFontAndColorsDefaultProvider
+Microsoft.CodeAnalysis.Editor.InlineParameterNameHints.InlineParameterNameHintsFontAndColorsDefaultProvider.InlineParameterNameHintsFontAndColorsDefaultProvider(Microsoft.VisualStudio.Shell.Interop.IVsFontAndColorStorage storage) -> void
