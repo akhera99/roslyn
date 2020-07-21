@@ -1,4 +1,8 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -9,11 +13,12 @@ using Microsoft.VisualStudio.Shell.Interop;
 namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
 {
     [Guid("FE84602A-43A8-4D48-9BAD-E2870B875FA0")]
-    public class InlineParameterNameHintsFontAndColorsDefaultProvider : IVsFontAndColorDefaultsProvider
+    internal class InlineParameterNameHintsFontAndColorsDefaultProvider : IVsFontAndColorDefaultsProvider
     {
+        private InlineParameterNameHintsFontandColors _hintsFontandColors;
         public InlineParameterNameHintsFontAndColorsDefaultProvider(IVsFontAndColorStorage storage)
         {
-
+            _hintsFontandColors = new InlineParameterNameHintsFontandColors(storage);
         }
 
         public int GetObject(ref Guid rguidCategory, out object ppObj)
@@ -22,9 +27,9 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         }
     }
 
-    public class InlineParameterNameHintsFontandColors : IVsFontAndColorDefaults, IVsFontAndColorEvents
+    internal class InlineParameterNameHintsFontandColors : IVsFontAndColorDefaults, IVsFontAndColorEvents
     {
-        public InlineParameterNameHintsFontAndColors(IVsFontAndColorStorage storage)
+        public InlineParameterNameHintsFontandColors(IVsFontAndColorStorage storage)
         {
 
         }
