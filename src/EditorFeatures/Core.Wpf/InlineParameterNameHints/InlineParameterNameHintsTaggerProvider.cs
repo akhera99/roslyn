@@ -28,18 +28,21 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         public readonly IClassificationFormatMapService ClassificationFormatMapService;
         public readonly IClassificationTypeRegistryService ClassificationTypeRegistryService;
         public readonly IThreadingContext ThreadingContext;
+        public readonly IKeyProcessorProvider KeyProcessorProvider;
 
         [ImportingConstructor]
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
         public InlineParameterNameHintsTaggerProvider(IViewTagAggregatorFactoryService viewTagAggregatorFactoryService,
                                                        IClassificationFormatMapService classificationFormatMapService,
                                                        IClassificationTypeRegistryService classificationTypeRegistryService,
-                                                       IThreadingContext threadingContext)
+                                                       IThreadingContext threadingContext,
+                                                       IKeyProcessorProvider keyProcessorProvider)
         {
             _viewTagAggregatorFactoryService = viewTagAggregatorFactoryService;
             this.ClassificationFormatMapService = classificationFormatMapService;
             this.ClassificationTypeRegistryService = classificationTypeRegistryService;
             this.ThreadingContext = threadingContext;
+            this.KeyProcessorProvider = keyProcessorProvider;
         }
 
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
