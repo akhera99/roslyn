@@ -39,6 +39,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         private readonly SymbolKey _key;
         private readonly IThreadingContext _threadingContext;
         public Lazy<IStreamingFindUsagesPresenter> _streamingPresenter;
+        public IKeyProcessorProvider _keyProcessorProvider;
 
         /// <summary>
         /// Creates the UIElement on call
@@ -58,6 +59,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             _streamingPresenter = taggerProvider.StreamingFindUsagesPresenter;
             _threadingContext = taggerProvider.ThreadingContext;
             _toolTipService = taggerProvider.ToolTipService;
+            _keyProcessorProvider = taggerProvider.KeyProcessorProvider;
 
             // Sets the tooltip to a string so that the tool tip opening event can be triggered
             // Tooltip value does not matter at this point

@@ -32,6 +32,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         public readonly IThreadingContext ThreadingContext;
         public readonly IToolTipService ToolTipService;
         public readonly Lazy<IStreamingFindUsagesPresenter> StreamingFindUsagesPresenter;
+        public readonly IKeyProcessorProvider KeyProcessorProvider;
 
         [ImportingConstructor]
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
@@ -40,7 +41,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
                                                        IClassificationTypeRegistryService classificationTypeRegistryService,
                                                        IThreadingContext threadingContext,
                                                        IToolTipService toolTipService,
-                                                       Lazy<IStreamingFindUsagesPresenter> streamingFindUsagesPresenter)
+                                                       Lazy<IStreamingFindUsagesPresenter> streamingFindUsagesPresenter,
+                                                       IKeyProcessorProvider keyProcessorProvider)
         {
             _viewTagAggregatorFactoryService = viewTagAggregatorFactoryService;
             this.ClassificationFormatMapService = classificationFormatMapService;
@@ -48,6 +50,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             this.ThreadingContext = threadingContext;
             this.ToolTipService = toolTipService;
             this.StreamingFindUsagesPresenter = streamingFindUsagesPresenter;
+            this.KeyProcessorProvider = keyProcessorProvider;
         }
 
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
