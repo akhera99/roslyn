@@ -38,6 +38,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
         private readonly IAsynchronousOperationListener _listener;
 
         protected override IEnumerable<PerLanguageOption2<bool>> PerLanguageOptions => SpecializedCollections.SingletonEnumerable(FeatureOnOffOptions.InlineParameterNameHints);
+        public static Option2<bool> ToggleOption = new Option2<bool>("InlineParameterNameHintsOption", "Inline Parameter Name Hints", false);
         protected override SpanTrackingMode SpanTrackingMode => SpanTrackingMode.EdgeInclusive;
 
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
@@ -56,7 +57,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             // TaggerDelay is NearImmediate because we want the renaming and tag creation to be instantaneous
             return TaggerEventSources.Compose(
                 TaggerEventSources.OnViewSpanChanged(ThreadingContext, textViewOpt, textChangeDelay: TaggerDelay.Short, scrollChangeDelay: TaggerDelay.NearImmediate),
-                TaggerEventSources.OnWorkspaceChanged(subjectBuffer, TaggerDelay.NearImmediate, _listener));
+                TaggerEventSources.OnWorkspaceChanged(subjectBuffer, TaggerDelay.NearImmediate, _listener),
+                TaggerEventSources.OnOptionChanged(subjectBuffer, ToggleOption, TaggerDelay.NearImmediate));
         }
 
         protected override IEnumerable<SnapshotSpan> GetSpansToTag(ITextView textView, ITextBuffer subjectBuffer)
@@ -84,7 +86,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             var paramNameHintsService = document.GetLanguageService<IInlineParameterNameHintsService>();
             if (paramNameHintsService != null)
             {
-                var parameterHints = await paramNameHintsService.GetInlineParameterNameHintsAsync(document, snapshotSpan.Span.ToTextSpan(), cancellationToken).ConfigureAwait(false);
+                var parameterHints = await paramNameHintsService.GetInlineParameterNameHintsAsync(document, snapshotSpan.Span.ToTextSpan(), ToggleOption, cancellationToken).ConfigureAwait(false);
                 foreach (var parameterHint in parameterHints)
                 {
                     cancellationToken.ThrowIfCancellationRequested();

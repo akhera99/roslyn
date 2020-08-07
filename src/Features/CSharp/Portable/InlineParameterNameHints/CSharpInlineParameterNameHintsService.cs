@@ -33,7 +33,7 @@ namespace Microsoft.CodeAnalysis.CSharp.InlineParameterNameHints
         }
 
         protected override IEnumerable<InlineParameterHint> AddAllParameterNameHintLocations(
-             SemanticModel semanticModel, IEnumerable<SyntaxNode> nodes, CancellationToken cancellationToken)
+             SemanticModel semanticModel, IEnumerable<SyntaxNode> nodes, bool toggled, CancellationToken cancellationToken)
         {
             var spans = new List<InlineParameterHint>();
             foreach (var node in nodes)
@@ -45,7 +45,7 @@ namespace Microsoft.CodeAnalysis.CSharp.InlineParameterNameHints
 
                 if (node is ArgumentSyntax argument)
                 {
-                    if (argument.NameColon == null && IsExpressionWithNoName(argument.Expression))
+                    if (argument.NameColon == null && (toggled || IsExpressionWithNoName(argument.Expression)))
                     {
                         var param = argument.DetermineParameter(semanticModel, cancellationToken: cancellationToken);
                         if (param != null && param.Name != "")
@@ -56,7 +56,7 @@ namespace Microsoft.CodeAnalysis.CSharp.InlineParameterNameHints
                 }
                 else if (node is AttributeArgumentSyntax attribute)
                 {
-                    if (attribute.NameEquals == null && attribute.NameColon == null && IsExpressionWithNoName(attribute.Expression))
+                    if (attribute.NameEquals == null && attribute.NameColon == null && (toggled || IsExpressionWithNoName(attribute.Expression)))
                     {
                         var param = attribute.DetermineParameter(semanticModel, cancellationToken: cancellationToken);
                         if (param != null && param.Name != "")

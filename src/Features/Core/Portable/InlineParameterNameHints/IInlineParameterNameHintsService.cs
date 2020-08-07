@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.Host;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.CodeAnalysis.InlineParameterNameHints
@@ -26,6 +27,6 @@ namespace Microsoft.CodeAnalysis.InlineParameterNameHints
 
     internal interface IInlineParameterNameHintsService : ILanguageService
     {
-        Task<IEnumerable<InlineParameterHint>> GetInlineParameterNameHintsAsync(Document document, TextSpan textSpan, CancellationToken cancellationToken);
+        Task<IEnumerable<InlineParameterHint>> GetInlineParameterNameHintsAsync(Document document, TextSpan textSpan, Option2<bool> toggleOption, CancellationToken cancellationToken);
     }
 }

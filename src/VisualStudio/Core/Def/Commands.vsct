@@ -578,6 +578,8 @@
       <IDSymbol name="cmdidGoToImplementation"        value="0x0200" />
 
       <IDSymbol name="cmdidRunCodeAnalysisForProject"  value="0x0201" />
+
+      <IDSymbol name="cmdidInlineParameterNameHints"  value ="0x202"/>
     </GuidSymbol>
 
     <GuidSymbol name="guidCSharpInteractiveCommandSet" value="{1492db0a-85a2-4e43-bf0d-ce55b89a8cc6}">

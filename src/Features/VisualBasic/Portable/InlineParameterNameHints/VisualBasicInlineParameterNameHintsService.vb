@@ -19,13 +19,13 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.InlineParameterNameHints
         Public Sub New()
         End Sub
 
-        Protected Overrides Function AddAllParameterNameHintLocations(semanticModel As SemanticModel, nodes As IEnumerable(Of SyntaxNode), cancellationToken As CancellationToken) As IEnumerable(Of InlineParameterHint)
+        Protected Overrides Function AddAllParameterNameHintLocations(semanticModel As SemanticModel, nodes As IEnumerable(Of SyntaxNode), toggled As Boolean, cancellationToken As CancellationToken) As IEnumerable(Of InlineParameterHint)
             Dim spans = New List(Of InlineParameterHint)
             For Each node In nodes
                 cancellationToken.ThrowIfCancellationRequested()
                 Dim simpleArgument = TryCast(node, SimpleArgumentSyntax)
                 If Not simpleArgument Is Nothing Then
-                    If Not simpleArgument.IsNamed AndAlso simpleArgument.NameColonEquals Is Nothing AndAlso IsExpressionWithNoName(simpleArgument.Expression) Then
+                    If Not simpleArgument.IsNamed AndAlso simpleArgument.NameColonEquals Is Nothing AndAlso (toggled Or IsExpressionWithNoName(simpleArgument.Expression)) Then
                         Dim param = simpleArgument.DetermineParameter(semanticModel, allowParamArray:=False, cancellationToken)
                         If param IsNot Nothing AndAlso param.Name.Length > 0 Then
                             spans.Add(New InlineParameterHint(param.GetSymbolKey(cancellationToken), param.Name, simpleArgument.Span.Start))
