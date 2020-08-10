@@ -142,6 +142,11 @@
         <target state="translated">Warning</target>
         <note />
       </trans-unit>
+      <trans-unit id="cmdidInlineParameterNameHints|ButtonText">
+        <source>Show All Inline Parameter Name Hints</source>
+        <target state="new">Show All Inline Parameter Name Hints</target>
+        <note />
+      </trans-unit>
       <trans-unit id="cmdidProjectContextAddAnalyzer|ButtonText">
         <source>&amp;Analyzer...</source>
         <target state="translated">분석기(&amp;A)...</target>

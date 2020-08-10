@@ -398,6 +398,13 @@
           <CommandName>RunCodeAnalysisForProject</CommandName>
         </Strings>
       </Button>
+
+      <Button guid="guidRoslynGrpId" id="cmdidInlineParameterNameHints" priority="0x0000" type="Button">
+        <Strings>
+          <ButtonText>Show All Inline Parameter Name Hints</ButtonText>
+        </Strings>
+      </Button>
+      
     </Buttons>
 
     <Menus>
