@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -60,7 +62,16 @@ namespace Microsoft.CodeAnalysis.Editor.InlineParameterNameHints
             };
 
             border.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            border.SizeChanged += Border_SizeChanged;
             return border;
+        }
+
+        private static void Border_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            var widthChange = Math.Abs(e.NewSize.Width - e.PreviousSize.Width);
+            var heightChange = Math.Abs(e.NewSize.Height - e.PreviousSize.Height);
+            Console.WriteLine("width: " + widthChange + " height: " + heightChange);
+            //Debug.Assert(!(widthChange > 5 || heightChange > 5));
         }
     }
 }
