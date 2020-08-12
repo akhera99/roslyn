@@ -400,7 +400,7 @@
       </Button>
 
       <Button guid="guidRoslynGrpId" id="cmdidInlineParameterNameHints" priority="0x0000" type="Button">
-        <CommandFlag>AllowVisibilityChangeOnToolBar</CommandFlag>
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_EDITTOOLBAR_COMPLETION"/>
         <Strings>
           <ButtonText>Show All Inline Parameter Name Hints</ButtonText>
         </Strings>
