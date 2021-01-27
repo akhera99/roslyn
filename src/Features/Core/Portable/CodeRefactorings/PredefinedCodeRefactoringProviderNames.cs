@@ -29,6 +29,7 @@ namespace Microsoft.CodeAnalysis.CodeRefactorings
         public const string InlineTemporary = "Inline Temporary Code Action Provider";
         public const string IntroduceUsingStatement = "Introduce Using Statement Code Action Provider";
         public const string IntroduceVariable = "Introduce Variable Code Action Provider";
+        public const string IntroduceParameter = "Introduce Parameter Code Action Provider";
         public const string InvertConditional = "Invert Conditional Code Action Provider";
         public const string InvertIf = "Invert If Code Action Provider";
         public const string InvertLogical = "Invert Logical Code Action Provider";

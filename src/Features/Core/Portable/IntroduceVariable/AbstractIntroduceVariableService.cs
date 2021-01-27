@@ -52,6 +52,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         protected abstract Task<Document> IntroduceQueryLocalAsync(SemanticDocument document, TExpressionSyntax expression, bool allOccurrences, CancellationToken cancellationToken);
         protected abstract Task<Document> IntroduceLocalAsync(SemanticDocument document, TExpressionSyntax expression, bool allOccurrences, bool isConstant, CancellationToken cancellationToken);
         protected abstract Task<Document> IntroduceFieldAsync(SemanticDocument document, TExpressionSyntax expression, bool allOccurrences, bool isConstant, CancellationToken cancellationToken);
+        protected abstract Task<Document> IntroduceParameterAsync(SemanticDocument document, TExpressionSyntax expression, bool allOccurrences, CancellationToken cancellationToken);
 
         protected abstract int DetermineFieldInsertPosition(TTypeDeclarationSyntax oldDeclaration, TTypeDeclarationSyntax newDeclaration);
         protected abstract int DetermineConstantInsertPosition(TTypeDeclarationSyntax oldDeclaration, TTypeDeclarationSyntax newDeclaration);
@@ -100,43 +101,43 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         {
             if (state.InQueryContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: true));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: true));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false));
 
                 return FeaturesResources.Introduce_query_variable;
             }
             else if (state.InParameterContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
 
                 return FeaturesResources.Introduce_constant;
             }
             else if (state.InFieldContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
 
                 return GetConstantOrFieldResource(state.IsConstant);
             }
             else if (state.InConstructorInitializerContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
 
                 return GetConstantOrFieldResource(state.IsConstant);
             }
             else if (state.InAutoPropertyInitializerContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
 
                 return GetConstantOrFieldResource(state.IsConstant);
             }
             else if (state.InAttributeContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
 
                 return FeaturesResources.Introduce_constant;
             }
@@ -149,11 +150,13 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
 
                 if (!BlockOverlapsHiddenPosition(block, cancellationToken))
                 {
-                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false));
+                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
+                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true));
 
                     if (blocks.All(b => !BlockOverlapsHiddenPosition(b, cancellationToken)))
                     {
-                        actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false));
+                        actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
+                        actions.Add(CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true));
                     }
                 }
 
@@ -162,8 +165,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             else if (state.InExpressionBodiedMemberContext)
             {
                 CreateConstantFieldActions(state, actions, cancellationToken);
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false));
+                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
+                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
 
                 return GetConstantOrLocalResource(state.IsConstant);
             }
@@ -190,8 +193,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 // local.
                 if (CanGenerateIntoContainer(state, cancellationToken))
                 {
-                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false));
-                    actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false));
+                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
+                    actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
                 }
             }
         }
@@ -243,14 +246,14 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             return false;
         }
 
-        private CodeAction CreateAction(State state, bool allOccurrences, bool isConstant, bool isLocal, bool isQueryLocal)
+        private CodeAction CreateAction(State state, bool allOccurrences, bool isConstant, bool isLocal, bool isQueryLocal, bool isParameter)
         {
             if (allOccurrences)
             {
-                return new IntroduceVariableAllOccurrenceCodeAction((TService)this, state.Document, state.Expression, allOccurrences, isConstant, isLocal, isQueryLocal);
+                return new IntroduceVariableAllOccurrenceCodeAction((TService)this, state.Document, state.Expression, allOccurrences, isConstant, isLocal, isQueryLocal, isParameter);
             }
 
-            return new IntroduceVariableCodeAction((TService)this, state.Document, state.Expression, allOccurrences, isConstant, isLocal, isQueryLocal);
+            return new IntroduceVariableCodeAction((TService)this, state.Document, state.Expression, allOccurrences, isConstant, isLocal, isQueryLocal, isParameter);
         }
 
         protected static SyntaxToken GenerateUniqueFieldName(

@@ -21,6 +21,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             private readonly bool _isConstant;
             private readonly bool _isLocal;
             private readonly bool _isQueryLocal;
+            private readonly bool _isParameter;
             private readonly TExpressionSyntax _expression;
             private readonly SemanticDocument _semanticDocument;
             private readonly TService _service;
@@ -32,7 +33,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 bool allOccurrences,
                 bool isConstant,
                 bool isLocal,
-                bool isQueryLocal)
+                bool isQueryLocal,
+                bool isParameter)
             {
                 _service = service;
                 _semanticDocument = document;
@@ -41,6 +43,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 _isConstant = isConstant;
                 _isLocal = isLocal;
                 _isQueryLocal = isQueryLocal;
+                _isParameter = isParameter;
                 Title = CreateDisplayText(expression);
             }
 
@@ -61,6 +64,10 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 else if (_isLocal)
                 {
                     return await _service.IntroduceLocalAsync(_semanticDocument, _expression, _allOccurrences, _isConstant, cancellationToken).ConfigureAwait(false);
+                }
+                else if (_isParameter)
+                {
+                    return await _service.IntroduceParameterAsync(_semanticDocument, _expression, _allOccurrences, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -91,11 +98,40 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
 
             private string CreateDisplayText(string nodeString)
             {
-                var formatString = _isQueryLocal
-                    ? _allOccurrences
-                        ? FeaturesResources.Introduce_query_variable_for_all_occurrences_of_0
-                        : FeaturesResources.Introduce_query_variable_for_0
-                    : formatStrings[_allOccurrences ? 1 : 0, _isConstant ? 1 : 0, _isLocal ? 1 : 0];
+                //var formatString = _isQueryLocal
+                //    ? _allOccurrences
+                //        ? FeaturesResources.Introduce_query_variable_for_all_occurrences_of_0
+                //        : FeaturesResources.Introduce_query_variable_for_0
+                //    : formatStrings[_allOccurrences ? 1 : 0, _isConstant ? 1 : 0, _isLocal ? 1 : 0];
+
+                string formatString;
+                if (_isQueryLocal)
+                {
+                    if (_allOccurrences)
+                    {
+                        formatString = FeaturesResources.Introduce_query_variable_for_all_occurrences_of_0;
+                    }
+                    else
+                    {
+                        formatString = FeaturesResources.Introduce_query_variable_for_0;
+                    }
+                }
+                else if (_isParameter)
+                {
+                    if (_allOccurrences)
+                    {
+                        formatString = FeaturesResources.Introduce_parameter_for_all_occurrences_of_0;
+                    }
+                    else
+                    {
+                        formatString = FeaturesResources.Introduce_parameter_for_0;
+                    }
+                }
+                else
+                {
+                    formatString = formatStrings[_allOccurrences ? 1 : 0, _isConstant ? 1 : 0, _isLocal ? 1 : 0];
+                }
+
                 return string.Format(formatString, nodeString);
             }
 
