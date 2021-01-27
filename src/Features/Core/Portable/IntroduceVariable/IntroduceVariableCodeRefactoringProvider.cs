@@ -35,8 +35,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             }
 
             var service = document.GetLanguageService<IIntroduceVariableService>();
-            var action = await service.IntroduceVariableAsync(document, textSpan, cancellationToken).ConfigureAwait(false);
-            if (action != null)
+            var actions = await service.IntroduceVariableAsync(document, textSpan, cancellationToken).ConfigureAwait(false);
+            foreach(action in actions)
             {
                 context.RegisterRefactoring(action, textSpan);
             }

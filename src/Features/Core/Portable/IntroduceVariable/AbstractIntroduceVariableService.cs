@@ -60,7 +60,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         protected virtual bool BlockOverlapsHiddenPosition(SyntaxNode block, CancellationToken cancellationToken)
             => block.OverlapsHiddenPosition(cancellationToken);
 
-        public async Task<CodeAction> IntroduceVariableAsync(
+        public async Task<ImmutableArray<CodeAction>> IntroduceVariableAsync(
             Document document,
             TextSpan textSpan,
             CancellationToken cancellationToken)
@@ -72,7 +72,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 var state = await State.GenerateAsync((TService)this, semanticDocument, textSpan, cancellationToken).ConfigureAwait(false);
                 if (state != null)
                 {
-                    var (title, actions) = CreateActions(state, cancellationToken);
+                    var (titles, actions) = CreateActions(state, cancellationToken);
                     if (actions.Length > 0)
                     {
                         // We may end up creating a lot of viable code actions for the selected
@@ -81,7 +81,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                         // the code action as 'inlinable' so that if the lightbulb is not cluttered
                         // then the nested items can just be lifted into it, giving the user fast
                         // access to them.
-                        return new CodeActionWithNestedActions(title, actions, isInlinable: true);
+                        return new CodeActionWithNestedActions(titles, actions, isInlinable: true);
                     }
                 }
 
@@ -89,15 +89,15 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             }
         }
 
-        private (string title, ImmutableArray<CodeAction>) CreateActions(State state, CancellationToken cancellationToken)
+        private (ArrayBuilder<string> titles, ImmutableArray<ImmutableArray<CodeAction>>) CreateActions(State state, CancellationToken cancellationToken)
         {
-            using var _ = ArrayBuilder<CodeAction>.GetInstance(out var actions);
-            var title = AddActionsAndGetTitle(state, actions, cancellationToken);
+            using var _ = ArrayBuilder<ArrayBuilder<CodeAction>>.GetInstance(out var actions);
+            var titles = AddActionsAndGetTitle(state, actions, cancellationToken);
 
-            return (title, actions.ToImmutable());
+            return (titles, actions.ToImmutable());
         }
 
-        private string AddActionsAndGetTitle(State state, ArrayBuilder<CodeAction> actions, CancellationToken cancellationToken)
+        private Dictionary<string, ArrayBuilder<CodeAction>> AddActionsAndGetTitle(State state, CancellationToken cancellationToken)
         {
             if (state.InQueryContext)
             {
@@ -182,7 +182,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         private static string GetConstantOrLocalResource(bool isConstant)
             => isConstant ? FeaturesResources.Introduce_constant : FeaturesResources.Introduce_local;
 
-        private void CreateConstantFieldActions(State state, ArrayBuilder<CodeAction> actions, CancellationToken cancellationToken)
+        private void CreateConstantFieldActions(State state, ArrayBuilder<ArrayBuilder<CodeAction>> actions, CancellationToken cancellationToken)
         {
             if (state.IsConstant &&
                 !state.GetSemanticMap(cancellationToken).AllReferencedSymbols.OfType<ILocalSymbol>().Any() &&
