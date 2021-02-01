@@ -70,110 +70,114 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 var semanticDocument = await SemanticDocument.CreateAsync(document, cancellationToken).ConfigureAwait(false);
 
                 var state = await State.GenerateAsync((TService)this, semanticDocument, textSpan, cancellationToken).ConfigureAwait(false);
+                var codeActionWithNestedActionsList = new ArrayBuilder<CodeAction>();
                 if (state != null)
                 {
-                    var (titles, actions) = CreateActions(state, cancellationToken);
-                    if (actions.Length > 0)
+                    var titlesAndActions = AddActionsAndGetTitle(state, cancellationToken);
+                    foreach (var titleAndAction in titlesAndActions)
                     {
-                        // We may end up creating a lot of viable code actions for the selected
-                        // piece of code.  Create a top level code action so that we don't overwhelm
-                        // the light bulb if there are a lot of other options in the list.  Set 
-                        // the code action as 'inlinable' so that if the lightbulb is not cluttered
-                        // then the nested items can just be lifted into it, giving the user fast
-                        // access to them.
-                        return new CodeActionWithNestedActions(titles, actions, isInlinable: true);
+                        if (titleAndAction.Value.Length > 0)
+                        {
+                            codeActionWithNestedActionsList.Add(new CodeActionWithNestedActions(titleAndAction.Key, titleAndAction.Value, isInlinable: true));
+                        }
                     }
+                    return codeActionWithNestedActionsList.ToImmutable();
                 }
-
-                return null;
+                return codeActionWithNestedActionsList.ToImmutable();
             }
         }
 
-        private (ArrayBuilder<string> titles, ImmutableArray<ImmutableArray<CodeAction>>) CreateActions(State state, CancellationToken cancellationToken)
+        private static void AddCodeActions(string key, Dictionary<string, ImmutableArray<CodeAction>> titleAndActionsDictionary, params CodeAction[] codeActions)
         {
-            using var _ = ArrayBuilder<ArrayBuilder<CodeAction>>.GetInstance(out var actions);
-            var titles = AddActionsAndGetTitle(state, actions, cancellationToken);
-
-            return (titles, actions.ToImmutable());
+            var arrayBuilder = new ArrayBuilder<CodeAction>();
+            arrayBuilder.AddRange(codeActions);
+            titleAndActionsDictionary[key] = arrayBuilder.ToImmutable();
         }
 
-        private Dictionary<string, ArrayBuilder<CodeAction>> AddActionsAndGetTitle(State state, CancellationToken cancellationToken)
+        private Dictionary<string, ImmutableArray<CodeAction>> AddActionsAndGetTitle(State state, CancellationToken cancellationToken)
         {
+            var titleAndActionsDictionary = new Dictionary<string, ImmutableArray<CodeAction>>();
             if (state.InQueryContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false));
-
-                return FeaturesResources.Introduce_query_variable;
+                AddCodeActions(FeaturesResources.Introduce_query_variable, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: true, isParameter: false));
             }
             else if (state.InParameterContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
-
-                return FeaturesResources.Introduce_constant;
+                AddCodeActions(FeaturesResources.Introduce_constant, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
             }
             else if (state.InFieldContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                var title = GetConstantOrFieldResource(state.IsConstant);
 
-                return GetConstantOrFieldResource(state.IsConstant);
+                AddCodeActions(title, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
             }
             else if (state.InConstructorInitializerContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                var title = GetConstantOrFieldResource(state.IsConstant);
 
-                return GetConstantOrFieldResource(state.IsConstant);
+                AddCodeActions(title, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
             }
             else if (state.InAutoPropertyInitializerContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
+                var title = GetConstantOrFieldResource(state.IsConstant);
 
-                return GetConstantOrFieldResource(state.IsConstant);
+                AddCodeActions(title, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: false));
             }
             else if (state.InAttributeContext)
             {
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
-
-                return FeaturesResources.Introduce_constant;
+                AddCodeActions(FeaturesResources.Introduce_constant, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
             }
             else if (state.InBlockContext)
             {
-                CreateConstantFieldActions(state, actions, cancellationToken);
+                CreateConstantFieldActions(state, titleAndActionsDictionary, cancellationToken);
 
                 var blocks = GetContainingExecutableBlocks(state.Expression);
                 var block = blocks.FirstOrDefault();
 
                 if (!BlockOverlapsHiddenPosition(block, cancellationToken))
                 {
-                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
-                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true));
+                    var localAction = CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false);
+                    var paramaterAction = CreateAction(state, allOccurrences: false, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true);
+                    var title = GetConstantOrLocalResource(state.IsConstant);
 
                     if (blocks.All(b => !BlockOverlapsHiddenPosition(b, cancellationToken)))
                     {
-                        actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
-                        actions.Add(CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true));
+                        var localActionAllOccurrences = CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false);
+                        var parameterActionAllOccurrences = CreateAction(state, allOccurrences: true, isConstant: false, isLocal: false, isQueryLocal: false, isParameter: true);
+
+                        AddCodeActions(title, titleAndActionsDictionary, localAction, localActionAllOccurrences);
+                        AddCodeActions(FeaturesResources.Introduce_parameter, titleAndActionsDictionary, paramaterAction, parameterActionAllOccurrences);
+                    }
+                    else
+                    {
+                        AddCodeActions(title, titleAndActionsDictionary, localAction);
+                        AddCodeActions(FeaturesResources.Introduce_parameter, titleAndActionsDictionary, paramaterAction);
                     }
                 }
-
-                return GetConstantOrLocalResource(state.IsConstant);
             }
             else if (state.InExpressionBodiedMemberContext)
             {
-                CreateConstantFieldActions(state, actions, cancellationToken);
-                actions.Add(CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
-                actions.Add(CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
+                CreateConstantFieldActions(state, titleAndActionsDictionary, cancellationToken);
 
-                return GetConstantOrLocalResource(state.IsConstant);
+                var title = GetConstantOrLocalResource(state.IsConstant);
+
+                AddCodeActions(title, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false),
+                    CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: true, isQueryLocal: false, isParameter: false));
+
+                AddCodeActions(FeaturesResources.Introduce_parameter, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: true),
+                    CreateAction(state, allOccurrences: true, isConstant: state.IsConstant, isLocal: false, isQueryLocal: false, isParameter: true));
             }
             else
             {
                 return null;
             }
+            return titleAndActionsDictionary;
         }
 
         private static string GetConstantOrFieldResource(bool isConstant)
@@ -182,7 +186,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         private static string GetConstantOrLocalResource(bool isConstant)
             => isConstant ? FeaturesResources.Introduce_constant : FeaturesResources.Introduce_local;
 
-        private void CreateConstantFieldActions(State state, ArrayBuilder<ArrayBuilder<CodeAction>> actions, CancellationToken cancellationToken)
+        private void CreateConstantFieldActions(State state, Dictionary<string, ImmutableArray<CodeAction>> titleAndActionsDictionary, CancellationToken cancellationToken)
         {
             if (state.IsConstant &&
                 !state.GetSemanticMap(cancellationToken).AllReferencedSymbols.OfType<ILocalSymbol>().Any() &&
@@ -193,8 +197,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 // local.
                 if (CanGenerateIntoContainer(state, cancellationToken))
                 {
-                    actions.Add(CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
-                    actions.Add(CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
+                    AddCodeActions(FeaturesResources.Introduce_constant, titleAndActionsDictionary, CreateAction(state, allOccurrences: false, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false),
+                        CreateAction(state, allOccurrences: true, isConstant: true, isLocal: false, isQueryLocal: false, isParameter: false));
                 }
             }
         }
