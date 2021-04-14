@@ -4229,5 +4229,406 @@ record Program
     }
 }");
         }
+
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsExtractMethod)]
+        public async Task TestCastingBug()
+        {
+            await TestInRegularAndScript1Async(@"
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+public class FileDisassemblerWorker
+{
+	private readonly int _amountOfConcurrentJobs;
+	private readonly WorkerQueueContainer _workerQueueContainer;
+
+	public FileDisassemblerWorker(WorkerQueueContainer workerQueueContainer)
+	{
+		_amountOfConcurrentJobs = 10;
+		_workerQueueContainer = workerQueueContainer;
+	}
+
+	protected async Task ExecuteAsync(CancellationToken stoppingToken)
+	{
+		var th = new Thread(async () =>
+		{
+			WorkerLog.Instance.Information($""Starting { nameof(FileDisassemblerWorker)}
+            "");
+
+            var incomingQueue = _workerQueueContainer.ToProcessFiles.Reader;
+            var outgoingQueue = _workerQueueContainer.ToSendChunks.Writer;
+            var taskRunner = new TaskRunner(_amountOfConcurrentJobs);
+            while (await incomingQueue.WaitToReadAsync() && !stoppingToken.IsCancellationRequested)
+            {
+                var file = await incomingQueue.ReadAsync(stoppingToken);
+                if (System.IO.File.Exists(PathBuilder.BuildPath(file.Path)))
+                {
+                    taskRunner.Add(async () =>
+                    {
+                        //START OF SECTION TO REFACTOR TO METHOD
+                        [|WorkerLog.Instance.Information($""'{file.Path}' is being processed"");
+                        var recipients = await GetRecipients(file);
+
+                        if (recipients.Any())
+                        {
+                            var eofMessage = await SplitFile(file, recipients, outgoingQueue);
+                            if (eofMessage is object)
+                                await FinializeFileProcess(eofMessage, recipients);
+
+                            WorkerLog.Instance.Information($""'{file.Path}' is processed"");
+                        }|]
+                        //END OF SECTION
+                    });
+                }
+                else
+                {
+                    WorkerLog.Instance.Information($""File '{file.Path}' does not exist"");
+                }
+            }
+        });
+
+		th.Start();
+
+		await Task.Delay(Timeout.Infinite);
+    }
+
+    private Task<List<Recipient>> GetRecipients(File file)
+    {
+        return Task.FromResult<List<Recipient>>(null);
+    }
+
+    private async Task<object> SplitFile(File file, ICollection<Recipient> recipients, System.Threading.Channels.ChannelWriter<(Recipient recipient, FileChunk filechunk)> writer)
+    {
+        async Task ChunkCreatedCallBack(FileChunk fileChunk)
+        {
+            foreach (var recipient in recipients)
+            {
+                if (await writer.WaitToWriteAsync())
+                    await writer.WriteAsync((recipient, fileChunk));
+            }
+        }
+
+        //return await _fileProcessService.ProcessFile(file, ChunkCreatedCallBack);
+        return null;
+    }
+
+    private Task FinializeFileProcess(object eofMessage, ICollection<Recipient> recipients)
+    {
+        return Task.CompletedTask;
+    }
+
+}
+
+public static class PathBuilder
+{
+    public static string BasePath { get; private set; }
+
+    public static void SetBasePath(string basePath)
+    {
+        BasePath = basePath;
+    }
+
+    public static string BuildPath(string relativePath)
+    {
+        return System.IO.Path.Combine(BasePath, relativePath ?? "");
+    }
+}
+
+public class TaskRunner
+{
+    private readonly List<Task> _runningTasks = new List<Task>();
+    private readonly SemaphoreSlim _semaphoreSlim;
+    private readonly Timer _cleanupJob;
+
+    public TaskRunner(int maxAmountOfRunningTasks)
+    {
+        _semaphoreSlim = new SemaphoreSlim(maxAmountOfRunningTasks);
+        _cleanupJob = new Timer(x => { _runningTasks.RemoveAll(x => x.IsCompleted); }, null, TimeSpan.FromSeconds(0), TimeSpan.FromMinutes(1));
+    }
+
+    public void Add(Func<Task> action)
+    {
+        _runningTasks.Add(Task.Run(async () =>
+        {
+            await _semaphoreSlim.WaitAsync();
+            await action();
+            _semaphoreSlim.Release();
+        }));
+    }
+
+    public async Task WaitTillComplete()
+    {
+        await Task.WhenAll(_runningTasks);
+    }
+}
+
+public static class WorkerLog
+{
+    public static ILogger Instance { get; } = Log.ForContext(""Context"", ""Host"");
+}
+
+public class WorkerQueueContainer
+{
+    public WorkerQueueContainer()
+    {
+        ToProcessFiles = Channel.CreateBounded<File>(new BoundedChannelOptions(50) { FullMode = BoundedChannelFullMode.Wait });
+        ToSendFiles = Channel.CreateBounded<File>(new BoundedChannelOptions(50) { FullMode = BoundedChannelFullMode.Wait });
+        ToSendChunks = Channel.CreateBounded<(Recipient recipient, FileChunk filechunk)>(new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.Wait });
+    }
+
+    public Channel<File> ToProcessFiles { get; set; }
+
+    public Channel<File> ToSendFiles { get; set; }
+
+    public Channel<(Recipient recipient, FileChunk filechunk)> ToSendChunks { get; set; }
+}
+
+public class File
+{
+    public Guid Id { get; set; }
+
+    public Guid FolderId { get; set; }
+
+    public string Name { get; set; }
+
+    public int Version { get; set; }
+
+    public long Size { get; set; }
+
+    public DateTime LastModifiedDate { get; set; }
+
+    public string Path { get; set; }
+
+    public bool IsNew() => Version == 1;
+}
+
+public class FileChunk
+{
+    public Guid Id { get; private set; }
+
+    public Guid FileId { get; private set; }
+
+    public int SequenceNo { get; private set; }
+
+    public byte[] Value { get; private set; }
+}
+
+public class Recipient
+{
+    public Guid Id { get; private set; }
+
+    public string Name { get; private set; }
+
+    public string Address { get; private set; }
+
+    public bool Verified { get; private set; }
+}",
+@"
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+public class FileDisassemblerWorker
+{
+	private readonly int _amountOfConcurrentJobs;
+	private readonly WorkerQueueContainer _workerQueueContainer;
+
+	public FileDisassemblerWorker(WorkerQueueContainer workerQueueContainer)
+	{
+		_amountOfConcurrentJobs = 10;
+		_workerQueueContainer = workerQueueContainer;
+	}
+
+	protected async Task ExecuteAsync(CancellationToken stoppingToken)
+	{
+		var th = new Thread(async () =>
+		{
+			WorkerLog.Instance.Information($""Starting { nameof(FileDisassemblerWorker)}
+            "");
+
+            var incomingQueue = _workerQueueContainer.ToProcessFiles.Reader;
+            var outgoingQueue = _workerQueueContainer.ToSendChunks.Writer;
+            var taskRunner = new TaskRunner(_amountOfConcurrentJobs);
+            while (await incomingQueue.WaitToReadAsync() && !stoppingToken.IsCancellationRequested)
+            {
+                var file = await incomingQueue.ReadAsync(stoppingToken);
+                if (System.IO.File.Exists(PathBuilder.BuildPath(file.Path)))
+                {
+                    taskRunner.Add(async () =>
+                    {
+                        //START OF SECTION TO REFACTOR TO METHOD
+                        await NewMethod(outgoingQueue, file);
+                        //END OF SECTION
+                    });
+                }
+                else
+                {
+                    WorkerLog.Instance.Information($""File '{file.Path}' does not exist"");
+                }
+            }
+        });
+
+		th.Start();
+
+		await Task.Delay(Timeout.Infinite);
+    }
+
+    private async Task NewMethod(File file)
+    {
+        WorkerLog.Instance.Information($""'{file.Path}' is being processed"");
+        var recipients = await GetRecipients(file);
+
+        if (recipients.Any())
+        {
+            var eofMessage = await SplitFile(file, recipients, outgoingQueue);
+            if (eofMessage is object)
+                await FinializeFileProcess(eofMessage, recipients);
+
+            WorkerLog.Instance.Information($""'{file.Path}' is processed"");
+        }
+    }
+
+    private Task<List<Recipient>> GetRecipients(File file)
+    {
+        return Task.FromResult<List<Recipient>>(null);
+    }
+
+    private async Task<object> SplitFile(File file, ICollection<Recipient> recipients, System.Threading.Channels.ChannelWriter<(Recipient recipient, FileChunk filechunk)> writer)
+    {
+        async Task ChunkCreatedCallBack(FileChunk fileChunk)
+        {
+            foreach (var recipient in recipients)
+            {
+                if (await writer.WaitToWriteAsync())
+                    await writer.WriteAsync((recipient, fileChunk));
+            }
+        }
+
+        //return await _fileProcessService.ProcessFile(file, ChunkCreatedCallBack);
+        return null;
+    }
+
+    private Task FinializeFileProcess(object eofMessage, ICollection<Recipient> recipients)
+    {
+        return Task.CompletedTask;
+    }
+
+}
+
+public static class PathBuilder
+{
+    public static string BasePath { get; private set; }
+
+    public static void SetBasePath(string basePath)
+    {
+        BasePath = basePath;
+    }
+
+    public static string BuildPath(string relativePath)
+    {
+        return System.IO.Path.Combine(BasePath, relativePath ?? "");
+    }
+}
+
+public class TaskRunner
+{
+    private readonly List<Task> _runningTasks = new List<Task>();
+    private readonly SemaphoreSlim _semaphoreSlim;
+    private readonly Timer _cleanupJob;
+
+    public TaskRunner(int maxAmountOfRunningTasks)
+    {
+        _semaphoreSlim = new SemaphoreSlim(maxAmountOfRunningTasks);
+        _cleanupJob = new Timer(x => { _runningTasks.RemoveAll(x => x.IsCompleted); }, null, TimeSpan.FromSeconds(0), TimeSpan.FromMinutes(1));
+    }
+
+    public void Add(Func<Task> action)
+    {
+        _runningTasks.Add(Task.Run(async () =>
+        {
+            await _semaphoreSlim.WaitAsync();
+            await action();
+            _semaphoreSlim.Release();
+        }));
+    }
+
+    public async Task WaitTillComplete()
+    {
+        await Task.WhenAll(_runningTasks);
+    }
+}
+
+public static class WorkerLog
+{
+    public static ILogger Instance { get; } = Log.ForContext(""Context"", ""Host"");
+}
+
+public class WorkerQueueContainer
+{
+    public WorkerQueueContainer()
+    {
+        ToProcessFiles = Channel.CreateBounded<File>(new BoundedChannelOptions(50) { FullMode = BoundedChannelFullMode.Wait });
+        ToSendFiles = Channel.CreateBounded<File>(new BoundedChannelOptions(50) { FullMode = BoundedChannelFullMode.Wait });
+        ToSendChunks = Channel.CreateBounded<(Recipient recipient, FileChunk filechunk)>(new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.Wait });
+    }
+
+    public Channel<File> ToProcessFiles { get; set; }
+
+    public Channel<File> ToSendFiles { get; set; }
+
+    public Channel<(Recipient recipient, FileChunk filechunk)> ToSendChunks { get; set; }
+}
+
+public class File
+{
+    public Guid Id { get; set; }
+
+    public Guid FolderId { get; set; }
+
+    public string Name { get; set; }
+
+    public int Version { get; set; }
+
+    public long Size { get; set; }
+
+    public DateTime LastModifiedDate { get; set; }
+
+    public string Path { get; set; }
+
+    public bool IsNew() => Version == 1;
+}
+
+public class FileChunk
+{
+    public Guid Id { get; private set; }
+
+    public Guid FileId { get; private set; }
+
+    public int SequenceNo { get; private set; }
+
+    public byte[] Value { get; private set; }
+}
+
+public class Recipient
+{
+    public Guid Id { get; private set; }
+
+    public string Name { get; private set; }
+
+    public string Address { get; private set; }
+
+    public bool Verified { get; private set; }
+}");
+
+        }
     }
 }
