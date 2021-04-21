@@ -16,6 +16,7 @@ using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.LanguageServices;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Shared.Collections;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Roslyn.Utilities;
@@ -119,7 +120,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
         /// Depends upon the identifiers in the expression mapping back to parameters.
         /// Does not handle params parameters.
         /// </summary>
-        private static async Task<(bool shouldDisplay, bool containsClassExpression)> ShouldExpressionDisplayCodeActionAsync(Document document, TExpressionSyntax expression, CancellationToken cancellationToken)
+        private static async Task<(bool shouldDisplay, bool containsClassExpression)> ShouldExpressionDisplayCodeActionAsync(
+            Document document, TExpressionSyntax expression, IMethodSymbol methodSymbol, CancellationToken cancellationToken)
         {
             var variablesInExpression = expression.DescendantNodes();
             var semanticModel = await document.GetRequiredSemanticModelAsync(cancellationToken).ConfigureAwait(false);
@@ -148,16 +150,38 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                     }
                 }
 
+                var operation = semanticModel.GetOperation(variable, cancellationToken);
+                if (operation is null)
+                {
+                    continue;
+                }
                 // If expression contains this or base keywords then we do not want to refactor call sites
                 // that are not overloads/trampolines because we do not know if the class specific information
                 // is available in other documents.
-                if (variable.RawKind == syntaxKinds.ThisExpression || variable.RawKind == syntaxKinds.BaseExpression)
-                {
-                    containsClassSpecificStatement = true;
-                }
+                containsClassSpecificStatement = SymbolContainsClassSpecificInformation(operation);
             }
 
             return (true, containsClassSpecificStatement);
+        }
+
+        private static bool SymbolContainsClassSpecificInformation(IOperation operation)
+        {
+            if (operation is IInvocationOperation invocationOperation)
+            {
+                return invocationOperation.Instance is not null && invocationOperation.Instance.IsImplicit;
+            }
+            else if (operation is IFieldReferenceOperation fieldOperation)
+            {
+                return fieldOperation.Instance is not null && fieldOperation.Instance.IsImplicit;
+            }
+
+            return false;
+            //if (operation is not null && operation.
+            /*if (symbol is not null && symbol.ContainingSymbol.Equals(methodSymbol.ContainingSymbol))
+            {
+                return true;
+            }
+            return false;*/
         }
 
         /// <summary>
@@ -170,7 +194,7 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             CancellationToken cancellationToken)
         {
             var (shouldDisplay, containsClassExpression) = await ShouldExpressionDisplayCodeActionAsync(
-                document, expression, cancellationToken).ConfigureAwait(false);
+                document, expression, methodSymbol, cancellationToken).ConfigureAwait(false);
             if (!shouldDisplay)
             {
                 return null;
