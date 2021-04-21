@@ -1611,7 +1611,7 @@ class TestClass
 
     public int GetM(int x)
     {
-        return x * this.M1();
+        return x * M1();
     }
 
     public int M(int x, int y, int m)
@@ -1636,6 +1636,7 @@ class Net
 class Perl : Net
 {
     public new int _value = 7;
+
     public void Write()
     {
         int x = [|base._value + 1;|]
@@ -1644,21 +1645,22 @@ class Perl : Net
 
             var expected =
 @"using System;
-class TestClass
+class Net
 {
-    public int M1()
+    public int _value = 6;
+}
+
+class Perl : Net
+{
+    public new int _value = 7;
+
+    public int GetX()
     {
-        return 5;
+        return base._value + 1;
     }
 
-    public int GetM(int x)
+    public void Write(int x)
     {
-        return x * this.M1();
-    }
-
-    public int M(int x, int y, int m)
-    {
-        return m;
     }
 }";
 
