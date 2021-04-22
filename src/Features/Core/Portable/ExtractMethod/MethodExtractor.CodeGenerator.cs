@@ -121,7 +121,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                         cancellationToken);
                 }
 
-                var newSyntaxRoot = newCallSiteRoot.ReplaceNode(destination, newContainer.WithAdditionalAnnotations(Simplifier.Annotation));
+                var newSyntaxRoot = newCallSiteRoot.ReplaceNode(destination, newContainer);
                 var newDocument = callSiteDocument.Document.WithSyntaxRoot(newSyntaxRoot);
                 newDocument = await Simplifier.ReduceAsync(newDocument, Simplifier.Annotation, null, cancellationToken).ConfigureAwait(false);
 
