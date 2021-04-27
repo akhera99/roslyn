@@ -358,6 +358,17 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                 return parameterBehavior == ParameterBehavior.Ref ? RefKind.Ref :
                             parameterBehavior == ParameterBehavior.Out ? RefKind.Out : RefKind.None;
             }
+
+            private SyntaxKind CheckIfInParameterSyntaxKind()
+            {
+                var languageVersion = ((CSharpParseOptions)SemanticDocument.SyntaxTree.Options).LanguageVersion;
+                if (languageVersion >= LanguageVersion.CSharp7_2)
+                {
+
+                }
+
+                return SyntaxKind.None;
+            }
         }
     }
 }
