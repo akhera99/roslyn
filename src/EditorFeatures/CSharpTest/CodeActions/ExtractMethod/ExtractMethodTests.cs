@@ -4291,5 +4291,53 @@ record Program
     }
 }");
         }
+
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsExtractMethod)]
+        public async Task TestPassByValue()
+        {
+            await TestInRegularAndScript1Async(@"
+using System;
+class C 
+{
+    private static void M()
+    {
+        var x = 0;
+        Action a = () => {
+            x++;
+        };
+        // Extract Method start
+        [|a();
+        if (1 == x)
+        {
+            Console.WriteLine(x);
+        }|]
+        // Extract Method end
+    }
+}",
+@"
+using System;
+class C
+{
+    private static void M()
+    {
+        var x = 0;
+        Action a = () => {
+            x++;
+        };
+        // Extract Method start
+        {|Rename:NewMethod|}(a, x);
+        // Extract Method end
+    }
+
+    private static void NewMethod(in int x, Action a)
+    {
+        a();
+        if (1 == x)
+        {
+            Console.WriteLine(x);
+        }
+    }
+}");
+        }
     }
 }
