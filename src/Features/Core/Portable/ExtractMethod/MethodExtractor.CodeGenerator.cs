@@ -78,6 +78,8 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
             protected abstract TStatement CreateReturnStatement(string identifierName = null);
 
             protected abstract ImmutableArray<TStatement> GetInitialStatementsForMethodDefinitions();
+
+            protected abstract RefKind GetRefKindOfVariable(ParameterBehavior parameterBehavior);
             #endregion
 
             public async Task<GeneratedCode> GenerateAsync(CancellationToken cancellationToken)
@@ -353,21 +355,10 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                 return parameters.ToImmutableAndFree();
             }
 
-            private static RefKind GetRefKind(ParameterBehavior parameterBehavior)
+            private RefKind GetRefKind(ParameterBehavior parameterBehavior)
             {
                 return parameterBehavior == ParameterBehavior.Ref ? RefKind.Ref :
-                            parameterBehavior == ParameterBehavior.Out ? RefKind.Out : RefKind.None;
-            }
-
-            private SyntaxKind CheckIfInParameterSyntaxKind()
-            {
-                var languageVersion = ((CSharpParseOptions)SemanticDocument.SyntaxTree.Options).LanguageVersion;
-                if (languageVersion >= LanguageVersion.CSharp7_2)
-                {
-
-                }
-
-                return SyntaxKind.None;
+                            parameterBehavior == ParameterBehavior.Out ? RefKind.Out : GetRefKindOfVariable(parameterBehavior);
             }
         }
     }

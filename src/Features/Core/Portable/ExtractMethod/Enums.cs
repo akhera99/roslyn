@@ -30,7 +30,8 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
         None,
         Input,
         Out,
-        Ref
+        Ref,
+        In
     }
 
     /// <summary>

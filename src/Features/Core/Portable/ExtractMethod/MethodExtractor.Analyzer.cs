@@ -421,6 +421,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
 
                 // create map of each data
                 var capturedMap = new HashSet<ISymbol>(dataFlowAnalysisData.Captured);
+                var capturedOutsideMap = new HashSet<ISymbol>(dataFlowAnalysisData.CapturedOutside);
                 var dataFlowInMap = new HashSet<ISymbol>(dataFlowAnalysisData.DataFlowsIn);
                 var dataFlowOutMap = new HashSet<ISymbol>(dataFlowAnalysisData.DataFlowsOut);
                 var alwaysAssignedMap = new HashSet<ISymbol>(dataFlowAnalysisData.AlwaysAssigned);
@@ -445,6 +446,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                     }
 
                     var captured = capturedMap.Contains(symbol);
+                    var capturedOutside = capturedOutsideMap.Contains(symbol);
                     var dataFlowIn = dataFlowInMap.Contains(symbol);
                     var dataFlowOut = dataFlowOutMap.Contains(symbol);
                     var alwaysAssigned = alwaysAssignedMap.Contains(symbol);
@@ -496,7 +498,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
 
                     if (!TryGetVariableStyle(
                             bestEffort, symbolMap, symbol, model, type,
-                            captured, dataFlowIn, dataFlowOut, alwaysAssigned, variableDeclared,
+                            captured, capturedOutside, dataFlowIn, dataFlowOut, alwaysAssigned, variableDeclared,
                             readInside, writtenInside, readOutside, writtenOutside, unsafeAddressTaken,
                             out var variableStyle))
                     {
@@ -519,6 +521,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                 SemanticModel model,
                 ITypeSymbol type,
                 bool captured,
+                bool capturedOutside,
                 bool dataFlowIn,
                 bool dataFlowOut,
                 bool alwaysAssigned,
@@ -557,6 +560,12 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
                 if (captured && variableStyle == VariableStyle.MoveIn)
                 {
                     variableStyle = VariableStyle.Out;
+                    return true;
+                }
+
+                if (capturedOutside)
+                {
+                    variableStyle = VariableStyle.In;
                     return true;
                 }
 

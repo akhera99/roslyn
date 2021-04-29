@@ -49,5 +49,8 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
 
         public static readonly VariableStyle OutWithMoveOut =
             new VariableStyle() { ParameterStyle = ParameterStyle.OutWithMoveOut, ReturnStyle = ReturnStyle.Initialization };
+
+        public static readonly VariableStyle In =
+            new VariableStyle() { ParameterStyle = ParameterStyle.In, ReturnStyle = ReturnStyle.None };
     }
 }

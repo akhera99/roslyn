@@ -41,5 +41,8 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
 
         public static readonly ParameterStyle OutWithMoveOut =
             new ParameterStyle() { ParameterBehavior = ParameterBehavior.Out, DeclarationBehavior = DeclarationBehavior.MoveOut, SaferDeclarationBehavior = DeclarationBehavior.MoveOut };
+
+        public static readonly ParameterStyle In =
+            new ParameterStyle() { ParameterBehavior = ParameterBehavior.In, DeclarationBehavior = DeclarationBehavior.None, SaferDeclarationBehavior = DeclarationBehavior.None };
     }
 }

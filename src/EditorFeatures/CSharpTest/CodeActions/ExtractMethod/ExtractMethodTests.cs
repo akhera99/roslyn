@@ -4297,12 +4297,14 @@ record Program
         {
             await TestInRegularAndScript1Async(@"
 using System;
-class C 
+
+class C
 {
     private static void M()
     {
         var x = 0;
-        Action a = () => {
+        Action a = () =>
+        {
             x++;
         };
         // Extract Method start
@@ -4316,16 +4318,18 @@ class C
 }",
 @"
 using System;
+
 class C
 {
     private static void M()
     {
         var x = 0;
-        Action a = () => {
+        Action a = () =>
+        {
             x++;
         };
         // Extract Method start
-        {|Rename:NewMethod|}(a, x);
+        {|Rename:NewMethod|}(x, a);
         // Extract Method end
     }
 

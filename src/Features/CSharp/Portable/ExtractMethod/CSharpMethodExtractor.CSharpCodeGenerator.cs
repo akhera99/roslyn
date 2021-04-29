@@ -794,6 +794,20 @@ namespace Microsoft.CodeAnalysis.CSharp.ExtractMethod
                 }
             }
 
+            protected override RefKind GetRefKindOfVariable(ParameterBehavior parameterBehavior)
+            {
+                var languageVersion = ((CSharpParseOptions)SemanticDocument.SyntaxTree.Options).LanguageVersion;
+                if (languageVersion >= LanguageVersion.CSharp7_2)
+                {
+                    if (parameterBehavior == ParameterBehavior.In)
+                    {
+                        return RefKind.In;
+                    }
+                }
+
+                return RefKind.None;
+            }
+
             protected SyntaxToken GenerateMethodNameForStatementGenerators()
             {
                 var semanticModel = SemanticDocument.SemanticModel;

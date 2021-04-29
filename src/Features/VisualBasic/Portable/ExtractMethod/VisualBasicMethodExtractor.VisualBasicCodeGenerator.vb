@@ -424,6 +424,10 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.ExtractMethod
                 Return Await MyBase.CreateGeneratedCodeAsync(status, newDocument, cancellationToken).ConfigureAwait(False)
             End Function
 
+            Protected Overrides Function GetRefKindOfVariable(parameterBehavior As ParameterBehavior) As RefKind
+                Return RefKind.None
+            End Function
+
             Protected Function GetStatementContainingInvocationToExtractedMethodWorker() As StatementSyntax
                 Dim callSignature = CreateCallSignature()
 
