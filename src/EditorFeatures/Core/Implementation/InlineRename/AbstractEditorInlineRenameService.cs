@@ -138,10 +138,10 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
                 return new FailureInlineRenameInfo(EditorFeaturesResources.You_cannot_rename_this_element);
             }
 
-            if (symbol.Kind == SymbolKind.Property && symbol.ContainingType.IsAnonymousType)
+            /*if (symbol.Kind == SymbolKind.Property && symbol.ContainingType.IsAnonymousType)
             {
                 return new FailureInlineRenameInfo(EditorFeaturesResources.Renaming_anonymous_type_members_is_not_yet_supported);
-            }
+            }*/
 
             if (symbol.IsErrorType())
             {
