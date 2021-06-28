@@ -155,9 +155,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                 Background = format.BackgroundBrush,
                 Child = block,
                 CornerRadius = new CornerRadius(2),
-
                 // Highlighting lines are 2px buffer.  So shift us up by one from the bottom so we feel centered between them.
-                Margin = new Thickness(left, top: 0, right, bottom: 1),
+                Margin = new Thickness(left, top: 0, right, bottom: 2),
             };
 
             // Need to set these properties to avoid unnecessary reformatting because some dependancy properties
