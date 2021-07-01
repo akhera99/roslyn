@@ -26,14 +26,19 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
         public readonly InlineDiagnosticsLocations Location;
         private readonly DiagnosticData _diagnostic;
         private readonly INavigateToLinkService _navigateToLinkService;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ITextEditorFactoryService _textEditorFactoryService;
 
-        public InlineDiagnosticsTag(string errorType, DiagnosticData diagnostic, IEditorFormatMap editorFormatMap, InlineDiagnosticsLocations location, INavigateToLinkService navigateToLinkService)
+        public InlineDiagnosticsTag(string errorType, DiagnosticData diagnostic, IEditorFormatMap editorFormatMap, InlineDiagnosticsLocations location, INavigateToLinkService navigateToLinkService,
+            IServiceProvider serviceProvider)
             : base(editorFormatMap)
         {
             ErrorType = errorType;
             _diagnostic = diagnostic;
             Location = location;
             _navigateToLinkService = navigateToLinkService;
+            _serviceProvider = serviceProvider;
+            _textEditorFactoryService = (ITextEditorFactoryService)_serviceProvider.GetService(typeof(ITextEditorFactoryService));
         }
 
         /// <summary>
@@ -98,6 +103,9 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
             TextOptions.SetTextHintingMode(border, TextOptions.GetTextHintingMode(view.VisualElement));
             TextOptions.SetTextRenderingMode(border, TextOptions.GetTextRenderingMode(view.VisualElement));*/
 
+            var textViewHost = _textEditorFactoryService.CreateTextViewHost(view, setFocus: false);
+            var background = (SolidColorBrush)textViewHost.HostControl.Resources["ViewBackGroundBrush"];
+            ImageThemingUtilities.SetImageBackgroundColor(border, background.Color);
             view.ViewportWidthChanged += ViewportWidthChangedHandler;
 
             return new GraphicsResult(border, dispose:
