@@ -36,6 +36,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
                 DisplayName = EditorFeaturesResources.Inline_Diagnostics_Error;
                 BackgroundBrush = new SolidColorBrush(Color.FromRgb(252, 62, 54));
                 ForegroundBrush = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+                ForegroundCustomizable = false;
             }
         }
 
@@ -57,6 +58,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
                 DisplayName = EditorFeaturesResources.Inline_Diagnostics_Warning;
                 BackgroundBrush = new SolidColorBrush(Color.FromRgb(149, 219, 125));
                 ForegroundBrush = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+                ForegroundCustomizable = false;
             }
         }
 
@@ -78,6 +80,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
                 DisplayName = EditorFeaturesResources.Inline_Diagnostics_Rude_Edit;
                 BackgroundBrush = Brushes.Purple;
                 ForegroundBrush = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+                ForegroundCustomizable = false;
             }
         }
     }
