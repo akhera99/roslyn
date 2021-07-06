@@ -92,6 +92,41 @@ public class C {
         }
 
         [Fact]
+        public async Task FindAnonymousMemberTypeReferences()
+        {
+            var text = @"
+using System;
+using System.Linq;
+
+class Item
+{
+    public int? Id { get; set; }
+
+    static void Main(string[] args)
+    {
+
+        var items = new Item[] { };
+
+
+        var allItems = items.AsQueryable()
+            .Where(x => x.Id.HasValue)
+            .ToList();
+
+        var subList = allItems.Select(x => new { x.Id })
+            .ToDictionary(x => x.Id.Value, x => new { });
+    }
+}";
+            using var workspace = CreateWorkspace();
+            var solution = GetSingleDocumentSolution(workspace, text);
+            var project = solution.Projects.First();
+            var symbol = (await project.GetCompilationAsync()).GetTypeByMetadataName("Item").GetMembers("Id").First();
+
+            var result = (await SymbolFinder.FindReferencesAsync(symbol, solution)).ToList();
+            Assert.Equal(1, result.Count); // 1 symbol found
+            Assert.Equal(3, result[0].Locations.Count()); // 3 locations found
+        }
+
+        [Fact]
         public async Task FindTypeReference_DuplicateMetadataReferences()
         {
             var text = @"
