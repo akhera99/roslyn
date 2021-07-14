@@ -24,6 +24,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
     {
         private readonly IClassificationTypeRegistryService _classificationRegistryService;
         private readonly IClassificationFormatMap _formatMap;
+        private readonly ITagAggregator<IEndOfLineAdornmentTag> _endLineTagAggregator;
 
         public InlineDiagnosticsAdornmentManager(
             IThreadingContext threadingContext, IWpfTextView textView, IViewTagAggregatorFactoryService tagAggregatorFactoryService,
@@ -36,6 +37,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
             _formatMap = classificationFormatMapService.GetClassificationFormatMap(textView);
             _formatMap.ClassificationFormatMappingChanged += OnClassificationFormatMappingChanged;
             TextView.ViewportWidthChanged += TextView_ViewportWidthChanged;
+            _endLineTagAggregator = tagAggregatorFactoryService.CreateTagAggregator<IEndOfLineAdornmentTag>(textView);
         }
 
         /// <summary>
@@ -90,7 +92,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
                     var tag = (InlineDiagnosticsTag)element.Tag;
                     var classificationType = _classificationRegistryService.GetClassificationType(InlineDiagnosticsTag.TagID + tag.ErrorType);
                     var format = GetFormat(classificationType);
-                    tag.UpdateColor(format, element.Adornment);
+                    InlineDiagnosticsTag.UpdateColor(format, element.Adornment);
                 }
             }
         }
@@ -133,6 +135,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
                     // mappedPoint is known to not be null here because it is checked in the ShouldNotDrawTag method call.
                     var lineNum = mappedPoint!.Value.GetContainingLine().LineNumber;
 
+                    _endLineTagAggregator.TagsChanged += EndLineTagAggregator_TagsChanged;
+
                     // If the line does not have an associated tagMappingSpan and changedSpan, then add the first one.
                     if (!map.TryGetValue(lineNum, out var value))
                     {
@@ -149,6 +153,11 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
             }
 
             return map;
+
+            static void EndLineTagAggregator_TagsChanged(object sender, TagsChangedEventArgs e)
+            {
+                var changedSpan = e.Span;
+            }
         }
 
         /// <summary>

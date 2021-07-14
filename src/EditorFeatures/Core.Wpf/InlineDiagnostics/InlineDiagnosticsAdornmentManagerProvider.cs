@@ -40,8 +40,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineDiagnostics
             IViewTagAggregatorFactoryService tagAggregatorFactoryService,
             IAsynchronousOperationListenerProvider listenerProvider,
             IClassificationFormatMapService classificationFormatMapService,
-            IClassificationTypeRegistryService classificationTypeRegistryService
-            ) : base(threadingContext, tagAggregatorFactoryService, listenerProvider)
+            IClassificationTypeRegistryService classificationTypeRegistryService)
+            : base(threadingContext, tagAggregatorFactoryService, listenerProvider)
         {
             _classificationFormatMapService = classificationFormatMapService;
             _classificationTypeRegistryService = classificationTypeRegistryService;
