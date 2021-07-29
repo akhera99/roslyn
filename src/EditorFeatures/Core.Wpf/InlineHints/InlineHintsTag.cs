@@ -167,7 +167,6 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             TextOptions.SetTextHintingMode(border, TextOptions.GetTextHintingMode(textView.VisualElement));
             TextOptions.SetTextRenderingMode(border, TextOptions.GetTextRenderingMode(textView.VisualElement));
 
-            border.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             return border;
         }
 
