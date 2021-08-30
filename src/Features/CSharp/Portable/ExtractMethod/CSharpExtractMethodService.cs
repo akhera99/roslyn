@@ -15,7 +15,7 @@ namespace Microsoft.CodeAnalysis.CSharp.ExtractMethod
 {
     [Export(typeof(IExtractMethodService)), Shared]
     [ExportLanguageService(typeof(IExtractMethodService), LanguageNames.CSharp)]
-    internal class CSharpExtractMethodService : AbstractExtractMethodService<CSharpSelectionValidator, CSharpMethodExtractor, CSharpSelectionResult>
+    internal class CSharpExtractMethodService : AbstractExtractMethodService<CSharpSelectionValidator, CSharpMethodExtractorV2, CSharpSelectionResult>
     {
         [ImportingConstructor]
         [SuppressMessage("RoslynDiagnosticsReliability", "RS0033:Importing constructor should be [Obsolete]", Justification = "Used in test code: https://github.com/dotnet/roslyn/issues/42814")]
@@ -26,7 +26,11 @@ namespace Microsoft.CodeAnalysis.CSharp.ExtractMethod
         protected override CSharpSelectionValidator CreateSelectionValidator(SemanticDocument document, TextSpan textSpan, OptionSet options)
             => new CSharpSelectionValidator(document, textSpan, options);
 
-        protected override CSharpMethodExtractor CreateMethodExtractor(CSharpSelectionResult selectionResult, bool localFunction)
-            => new CSharpMethodExtractor(selectionResult, localFunction);
+        /*protected override CSharpMethodExtractor CreateMethodExtractor(CSharpSelectionResult selectionResult, bool localFunction)
+            => new CSharpMethodExtractor(selectionResult, localFunction);*/
+
+        protected override CSharpMethodExtractorV2 CreateMethodExtractor(CSharpSelectionResult selectionResult, bool localFunction)
+            => new CSharpMethodExtractorV2(selectionResult, localFunction);
+
     }
 }

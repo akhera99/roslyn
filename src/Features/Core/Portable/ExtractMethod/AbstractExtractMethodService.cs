@@ -13,7 +13,7 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
 {
     internal abstract class AbstractExtractMethodService<TValidator, TExtractor, TResult> : IExtractMethodService
         where TValidator : SelectionValidator
-        where TExtractor : MethodExtractor
+        where TExtractor : MethodExtractorV2
         where TResult : SelectionResult
     {
         protected abstract TValidator CreateSelectionValidator(SemanticDocument document, TextSpan textSpan, OptionSet options);
@@ -41,8 +41,11 @@ namespace Microsoft.CodeAnalysis.ExtractMethod
             cancellationToken.ThrowIfCancellationRequested();
 
             // extract method
-            var extractor = CreateMethodExtractor((TResult)selectionResult, localFunction);
+            //var extractor = CreateMethodExtractor((TResult)selectionResult, localFunction);
 
+            //return await extractor.ExtractMethodAsync(cancellationToken).ConfigureAwait(false);
+
+            var extractor = CreateMethodExtractor((TResult)selectionResult, localFunction);
             return await extractor.ExtractMethodAsync(cancellationToken).ConfigureAwait(false);
         }
     }
