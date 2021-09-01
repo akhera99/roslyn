@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.Editor.Shared.Options;
 using Microsoft.CodeAnalysis.InlineHints;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.VisualStudio.IntegrationTest.Utilities;
+using Microsoft.VisualStudio.IntegrationTest.Utilities.OutOfProcess;
 using Roslyn.Test.Utilities;
 using Xunit;
 
@@ -21,6 +22,7 @@ namespace Roslyn.VisualStudio.IntegrationTests.CSharp
     public class CSharpInlineHints : AbstractEditorTest
     {
         protected override string LanguageName => LanguageNames.CSharp;
+        private InlineHints_OutOfProc InlineHints => VisualStudio.InlineHints;
 
         public CSharpInlineHints(VisualStudioInstanceFactory instanceFactory)
             : base(instanceFactory, nameof(CSharpInlineHints))
@@ -46,7 +48,6 @@ public class Program
     }
 }");
             VisualStudio.Workspace.SetFeatureOption(InlineHintsOptions.EnabledForParameters.Feature, InlineHintsOptions.EnabledForParameters.Name, LanguageName, "True");
-            //VisualStudio.Editor.PlaceCaret("5", charsOffset: -1);
             VisualStudio.Editor.InvokeQuickInfo();
             Assert.Equal("class Program\r\nHello!", VisualStudio.Editor.GetQuickInfo());
         }
