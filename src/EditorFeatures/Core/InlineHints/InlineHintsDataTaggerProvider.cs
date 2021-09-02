@@ -34,7 +34,6 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
     internal class InlineHintsDataTaggerProvider : AsynchronousViewTaggerProvider<InlineHintDataTag>
     {
         private readonly IAsynchronousOperationListener _listener;
-
         protected override SpanTrackingMode SpanTrackingMode => SpanTrackingMode.EdgeInclusive;
 
         /// <summary>
@@ -49,6 +48,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         [ImportingConstructor]
         public InlineHintsDataTaggerProvider(
             IThreadingContext threadingContext,
+            IInlineRenameService renameService,
             IAsynchronousOperationListenerProvider listenerProvider)
             : base(threadingContext, listenerProvider.GetListener(FeatureAttribute.InlineHints))
         {

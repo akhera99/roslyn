@@ -35,6 +35,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         public readonly IUIThreadOperationExecutor OperationExecutor;
         public readonly IAsynchronousOperationListener AsynchronousOperationListener;
         public readonly IToolTipService ToolTipService;
+        public readonly IInlineRenameService InlineRenameService;
         public readonly ClassificationTypeMap TypeMap;
         public readonly Lazy<IStreamingFindUsagesPresenter> StreamingFindUsagesPresenter;
 
@@ -48,6 +49,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             IUIThreadOperationExecutor operationExecutor,
             IAsynchronousOperationListenerProvider listenerProvider,
             IToolTipService toolTipService,
+            IInlineRenameService renameService,
             ClassificationTypeMap typeMap,
             Lazy<IStreamingFindUsagesPresenter> streamingFindUsagesPresenter)
         {
@@ -57,6 +59,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             this.ThreadingContext = threadingContext;
             this.OperationExecutor = operationExecutor;
             this.ToolTipService = toolTipService;
+            this.InlineRenameService = renameService;
             this.StreamingFindUsagesPresenter = streamingFindUsagesPresenter;
             this.TypeMap = typeMap;
 
