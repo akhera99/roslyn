@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>IdeCoreBenchmarks.CSharpIdeAnalyzerBenchmarks-20211014-160252</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet=v0.13.0, OS=Windows 10.0.19043.1288 (21H1/May2021Update)
+Intel Core i7-9700 CPU 3.00GHz, 1 CPU, 8 logical and 8 physical cores
+.NET SDK=6.0.100-rc.1.21463.6
+  [Host]     : .NET 6.0.0 (6.0.21.45113), X64 RyuJIT
+  Job-XMTFST : .NET 6.0.0 (6.0.21.45113), X64 RyuJIT
+  RyuJitX64  : .NET 6.0.0 (6.0.21.45113), X64 RyuJIT
+</code></pre>
+<pre><code>Jit=RyuJit  Platform=X64  Runtime=.NET 6.0  
+</code></pre>
+
+<table>
+<thead><tr><th>Method</th><th> Job</th><th>Toolchain</th><th>  AnalyzerName</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Gen 0</th><th>Gen 1</th><th>Gen 2</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>RunAnalyzer</td><td>Job-XMTFST</td><td>net6.0</td><td>CShar(...)lyzer [33]</td><td>15.63 s</td><td>1.385 s</td><td>4.084 s</td><td>275000.0000</td><td>82000.0000</td><td>-</td><td>2 GB</td>
+</tr><tr><td>RunAnalyzer</td><td>RyuJitX64</td><td>Default</td><td>CShar(...)lyzer [33]</td><td>17.02 s</td><td>1.373 s</td><td>4.049 s</td><td>275000.0000</td><td>78000.0000</td><td>-</td><td>2 GB</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -25,9 +25,9 @@ namespace IdeCoreBenchmarks
         private readonly string _solutionPath;
 
         private Options _options;
-        private MSBuildWorkspace _workspace;
+        //private MSBuildWorkspace _workspace;
 
-        private DiagnosticAnalyzerRunner _diagnosticAnalyzerRunner;
+        //private DiagnosticAnalyzerRunner _diagnosticAnalyzerRunner;
 
         [Params("CSharpAddBracesDiagnosticAnalyzer")]
         public string AnalyzerName { get; set; }
@@ -61,24 +61,23 @@ namespace IdeCoreBenchmarks
                 usePersistentStorage: false,
                 fullSolutionAnalysis: false,
                 incrementalAnalyzerNames: ImmutableArray<string>.Empty);
-
-            _workspace = AnalyzerRunnerHelper.CreateWorkspace();
-            _diagnosticAnalyzerRunner = new DiagnosticAnalyzerRunner(_workspace, _options);
-
-            _ = _workspace.OpenSolutionAsync(_solutionPath, progress: null, CancellationToken.None).Result;
         }
 
-        [GlobalCleanup]
+        /*[GlobalCleanup]
         public void Cleanup()
         {
             _workspace?.Dispose();
             _workspace = null;
-        }
+        }*/
 
         [Benchmark]
         public async Task RunAnalyzer()
         {
-            await _diagnosticAnalyzerRunner.RunAsync(CancellationToken.None).ConfigureAwait(false);
+            var workspace = AnalyzerRunnerHelper.CreateWorkspace();
+            var diagnosticAnalyzerRunner = new DiagnosticAnalyzerRunner(workspace, _options);
+
+            _ = workspace.OpenSolutionAsync(_solutionPath, progress: null, CancellationToken.None).Result;
+            await diagnosticAnalyzerRunner.RunAsync(CancellationToken.None).ConfigureAwait(false);
         }
     }
 }

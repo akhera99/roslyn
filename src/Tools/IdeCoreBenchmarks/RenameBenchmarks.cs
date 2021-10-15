@@ -17,9 +17,10 @@ namespace IdeCoreBenchmarks
     public class RenameBenchmarks
     {
 
-        private Solution _solution;
-        private ISymbol _symbol;
-        private readonly OptionSet _options;
+        //private Solution _solution;
+        //private ISymbol _symbol;
+        //private readonly OptionSet _options;
+        private string _fileText;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -32,29 +33,30 @@ namespace IdeCoreBenchmarks
                 throw new ArgumentException();
             }
 
-            var projectId = ProjectId.CreateNewId();
-            var documentId = DocumentId.CreateNewId(projectId);
-
-            _solution = new AdhocWorkspace().CurrentSolution
-                .AddProject(projectId, "ProjectName", "AssemblyName", LanguageNames.CSharp)
-                .AddDocument(documentId, "DocumentName", File.ReadAllText(csFilePath));
-
-            var project = _solution.Projects.First();
-            var compilation = project.GetCompilationAsync().Result;
-            _symbol = compilation.GetTypeByMetadataName("Microsoft.CodeAnalysis.CSharp.BoundKind");
+            _fileText = File.ReadAllText(csFilePath);
         }
 
         [Benchmark]
         public void RenameNodes()
         {
-            _ = Microsoft.CodeAnalysis.Rename.Renamer.RenameSymbolAsync(_solution, _symbol, "NewName", _options);
+            var projectId = ProjectId.CreateNewId();
+            var documentId = DocumentId.CreateNewId(projectId);
+
+            var solution = new AdhocWorkspace().CurrentSolution
+                .AddProject(projectId, "ProjectName", "AssemblyName", LanguageNames.CSharp)
+                .AddDocument(documentId, "DocumentName", _fileText);
+
+            var project = solution.Projects.First();
+            var compilation = project.GetCompilationAsync().Result;
+            var symbol = compilation.GetTypeByMetadataName("Microsoft.CodeAnalysis.CSharp.BoundKind");
+            _ = Microsoft.CodeAnalysis.Rename.Renamer.RenameSymbolAsync(solution, symbol, "NewName", null);
         }
 
-        [IterationCleanup]
+        /*[IterationCleanup]
         public void Cleanup()
         {
             _solution = null;
             _symbol = null;
-        }
+        }*/
     }
 }

@@ -69,11 +69,5 @@ namespace IdeCoreBenchmarks
                 }
             }
         }
-
-        [IterationCleanup]
-        public void Cleanup()
-        {
-            _solution = null;
-        }
     }
 }
