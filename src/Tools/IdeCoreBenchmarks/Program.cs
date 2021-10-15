@@ -50,11 +50,11 @@ namespace IdeCoreBenchmarks
             return Path.Combine(Path.GetDirectoryName(sourceFilePath), @"..\..\..");
         }
 
-        private static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
             Environment.SetEnvironmentVariable(RoslynRootPathEnvVariableName, GetRoslynRootLocation());
             var navigate = new NavigateToTest();
-            _ = navigate.RunNavigateTo();
+            await navigate.RunNavigateTo().ConfigureAwait(false);
         }
     }
     public class NavigateToTest
@@ -115,7 +115,6 @@ namespace IdeCoreBenchmarks
             start = DateTime.Now;
             // Search each project with an independent threadpool task.
 
-            Debugger.Launch();
             var searchTasks = solution.Projects.Select(
                 p => Task.Run(() => SearchAsync(p, priorityDocuments: ImmutableArray<Document>.Empty), CancellationToken.None)).ToArray();
             var result = await Task.WhenAll(searchTasks).ConfigureAwait(false);
