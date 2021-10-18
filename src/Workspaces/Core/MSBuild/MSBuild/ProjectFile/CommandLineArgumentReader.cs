@@ -217,7 +217,7 @@ namespace Microsoft.CodeAnalysis.MSBuild
             static string ReadImportItem(MSB.Framework.ITaskItem item)
             {
                 var trimmed = item.ItemSpec.Trim();
-                return trimmed.Contains(' ') ? $"\"trimmed\"" : trimmed;
+                return trimmed.Contains(' ') ? $"\"{trimmed}\"" : trimmed;
             }
         }
 

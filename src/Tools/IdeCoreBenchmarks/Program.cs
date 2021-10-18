@@ -50,11 +50,15 @@ namespace IdeCoreBenchmarks
             return Path.Combine(Path.GetDirectoryName(sourceFilePath), @"..\..\..");
         }
 
-        private static async Task Main(string[] args)
+        private static void Main(string[] args)
         {
             Environment.SetEnvironmentVariable(RoslynRootPathEnvVariableName, GetRoslynRootLocation());
-            var navigate = new NavigateToTest();
-            await navigate.RunNavigateTo().ConfigureAwait(false);
+            var switcher = new BenchmarkSwitcher(typeof(Program).Assembly);
+#if DEBUG
+            switcher.Run(args, new DebugInProcessConfig());
+#else
+            switcher.Run(args);
+#endif
         }
     }
     public class NavigateToTest
@@ -67,13 +71,16 @@ namespace IdeCoreBenchmarks
 
             MSBuildLocator.RegisterInstance(msBuildInstance);
 
+            var relativePath = @"src\CSharpCompiler.sln";
+
             var roslynRoot = Environment.GetEnvironmentVariable(Program.RoslynRootPathEnvVariableName);
-            var solutionPath = Path.Combine(roslynRoot, @"Roslyn.sln");
+            var solutionPath = Path.Combine(roslynRoot, relativePath);
 
             if (!File.Exists(solutionPath))
-                throw new ArgumentException("Couldn't find Roslyn.sln");
+                throw new ArgumentException($"Couldn't find {solutionPath}");
 
-            Console.Write("Found Roslyn.sln: " + Process.GetCurrentProcess().Id);
+            Console.WriteLine("Running on " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+            Console.WriteLine($"Found {solutionPath}: " + Process.GetCurrentProcess().Id);
 
             var assemblies = MSBuildMefHostServices.DefaultAssemblies
                 .Add(typeof(AnalyzerRunnerHelper).Assembly)
@@ -104,25 +111,30 @@ namespace IdeCoreBenchmarks
             if (storageService == null)
                 throw new ArgumentException("Couldn't get storage service");
 
-            using (var storage = storageService.GetStorageAsync(workspace.CurrentSolution, CancellationToken.None).Result)
+            using (var storage = await storageService.GetStorageAsync(workspace.CurrentSolution, CancellationToken.None))
             {
                 Console.WriteLine();
             }
 
-            Console.WriteLine("Starting navigate to");
-            Console.WriteLine("Start recording:");
-            Console.ReadLine();
-            start = DateTime.Now;
-            // Search each project with an independent threadpool task.
+            for (int i = 0; i < 1; ++i)
+            {
+                Console.WriteLine($"Starting navigate to: iteration {i+1}");
+                Console.Write("Start recording (press enter to continue):");
+                Console.ReadLine();
+                start = DateTime.Now;
+                // Search each project with an independent threadpool task.
+                Console.WriteLine($"Project count: {solution.Projects.Count()}");
+                var searchTasks = solution.Projects.Select(
+                    p => Task.Run(() => SearchAsync(p, priorityDocuments: ImmutableArray<Document>.Empty), CancellationToken.None)).ToArray();
+                var result = await Task.WhenAll(searchTasks).ConfigureAwait(false);
+                var sum = result.Sum();
+                Console.WriteLine("Num results: " + sum);
+                Console.WriteLine("time: " + (DateTime.Now - start));
+                Console.Write("Stop recording (press enter to continue):");
+                Console.ReadLine();
+            }
 
-            var searchTasks = solution.Projects.Select(
-                p => Task.Run(() => SearchAsync(p, priorityDocuments: ImmutableArray<Document>.Empty), CancellationToken.None)).ToArray();
-            var result = await Task.WhenAll(searchTasks).ConfigureAwait(false);
-            var sum = result.Sum();
-            Console.WriteLine("Stop recording:");
-            Console.ReadLine();
-            //start = DateTime.Now;
-            Console.WriteLine("Num results: " + (DateTime.Now - start));
+            workspace.Dispose();
         }
 
         private static async Task<int> SearchAsync(Project project, ImmutableArray<Document> priorityDocuments)
@@ -130,7 +142,7 @@ namespace IdeCoreBenchmarks
             var service = project.LanguageServices.GetService<INavigateToSearchService>();
             var results = new List<INavigateToSearchResult>();
             await service.SearchProjectAsync(
-                project, priorityDocuments, "Document", service.KindsProvided,
+                project, priorityDocuments, "Syntax", service.KindsProvided,
                 r =>
                 {
                     lock (results)

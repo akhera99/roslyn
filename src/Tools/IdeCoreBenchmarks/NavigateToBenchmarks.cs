@@ -29,10 +29,11 @@ namespace IdeCoreBenchmarks
     [MemoryDiagnoser]
     public class NavigateToBenchmarks
     {
-        Solution _solution;
+        string _solutionPath;
+        private MSBuildWorkspace _workspace;
 
         [GlobalSetup]
-        public void SetUp()
+        public void GlobalSetup()
         {
             // QueryVisualStudioInstances returns Visual Studio installations on .NET Framework, and .NET Core SDK
             // installations on .NET Core. We use the one with the most recent version.
@@ -40,57 +41,77 @@ namespace IdeCoreBenchmarks
 
             MSBuildLocator.RegisterInstance(msBuildInstance);
 
+            var relativePath = @"src\CSharpCompiler.sln";
+
             var roslynRoot = Environment.GetEnvironmentVariable(Program.RoslynRootPathEnvVariableName);
-            var solutionPath = Path.Combine(roslynRoot, @"Roslyn.sln");
+            _solutionPath = Path.Combine(roslynRoot, relativePath);
 
-            if (!File.Exists(solutionPath))
-                throw new ArgumentException("Couldn't find Roslyn.sln");
+            if (!File.Exists(_solutionPath))
+                throw new ArgumentException($"Couldn't find {_solutionPath}");
 
-            Console.Write("Found Roslyn.sln: " + Process.GetCurrentProcess().Id);
+            Console.WriteLine("Running on " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+            Console.WriteLine($"Found {_solutionPath}: " + Process.GetCurrentProcess().Id);
 
+        }
+
+        [IterationSetup]
+        public void IterationSetup()
+        {
             var assemblies = MSBuildMefHostServices.DefaultAssemblies
                 .Add(typeof(AnalyzerRunnerHelper).Assembly)
                 .Add(typeof(FindReferencesBenchmarks).Assembly);
+
             var services = MefHostServices.Create(assemblies);
+            _workspace = MSBuildWorkspace.Create(new Dictionary<string, string>
+                    {
+                        // Use the latest language version to force the full set of available analyzers to run on the project.
+                        { "LangVersion", "9.0" },
+                    }, services);
 
-            var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>
-                {
-                    // Use the latest language version to force the full set of available analyzers to run on the project.
-                    { "LangVersion", "9.0" },
-                }, services);
-
-            if (workspace == null)
+            if (_workspace == null)
                 throw new ArgumentException("Couldn't create workspace");
 
-            workspace.TryApplyChanges(workspace.CurrentSolution.WithOptions(workspace.Options
+            _workspace.TryApplyChanges(_workspace.CurrentSolution.WithOptions(_workspace.Options
                 .WithChangedOption(StorageOptions.Database, StorageDatabase.SQLite)));
 
             Console.WriteLine("Opening roslyn.  Attach to: " + Process.GetCurrentProcess().Id);
 
             var start = DateTime.Now;
-            _solution = workspace.OpenSolutionAsync(solutionPath, progress: null, CancellationToken.None).Result;
+            var solution = _workspace.OpenSolutionAsync(_solutionPath, progress: null, CancellationToken.None).Result;
             Console.WriteLine("Finished opening roslyn: " + (DateTime.Now - start));
 
             // Force a storage instance to be created.  This makes it simple to go examine it prior to any operations we
             // perform, including seeing how big the initial string table is.
-            var storageService = workspace.Services.GetService<IPersistentStorageService>();
+            var storageService = _workspace.Services.GetService<IPersistentStorageService>();
             if (storageService == null)
                 throw new ArgumentException("Couldn't get storage service");
 
-            using (var storage = storageService.GetStorageAsync(workspace.CurrentSolution, CancellationToken.None).Result)
+            var task = storageService.GetStorageAsync(_workspace.CurrentSolution, CancellationToken.None);
+            while (!task.IsCompleted)
             {
-                Console.WriteLine();
+                Thread.Sleep(100);
             }
+
+            using var storage = task.Result;
+            Console.WriteLine();
+        }
+
+        [IterationCleanup]
+        public void IterationCleanup()
+        {
+            _workspace.Dispose();
+            _workspace = null;
         }
 
         [Benchmark]
+
         public async Task RunNavigateTo()
         {
             Console.WriteLine("Starting navigate to");
 
             var start = DateTime.Now;
             // Search each project with an independent threadpool task.
-            var searchTasks = _solution.Projects.Select(
+            var searchTasks = _workspace.CurrentSolution.Projects.Select(
                 p => Task.Run(() => SearchAsync(p, priorityDocuments: ImmutableArray<Document>.Empty), CancellationToken.None)).ToArray();
 
             var result = await Task.WhenAll(searchTasks).ConfigureAwait(false);
@@ -105,7 +126,7 @@ namespace IdeCoreBenchmarks
             var service = project.LanguageServices.GetService<INavigateToSearchService>();
             var results = new List<INavigateToSearchResult>();
             await service.SearchProjectAsync(
-                project, priorityDocuments, "Document", service.KindsProvided,
+                project, priorityDocuments, "Syntax", service.KindsProvided,
                 r =>
                 {
                     lock (results)
