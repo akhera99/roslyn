@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,8 @@ namespace Microsoft.CodeAnalysis.InlineHints
     internal interface IInlineHintsService : ILanguageService
     {
         void SetDisplayAllInlineHints(bool display);
+
+        event EventHandler OnDisplayAllChanged;
 
         Task<ImmutableArray<InlineHint>> GetInlineHintsAsync(Document document, TextSpan textSpan, InlineHintsOptions options, CancellationToken cancellationToken);
     }

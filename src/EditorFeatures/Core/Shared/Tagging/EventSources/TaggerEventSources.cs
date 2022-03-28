@@ -61,5 +61,7 @@ namespace Microsoft.CodeAnalysis.Editor.Shared.Tagging
 
         public static ITaggerEventSource OnViewSpanChanged(IThreadingContext threadingContext, ITextView textView)
             => new ViewSpanChangedEventSource(threadingContext, textView);
+
+        public static ITaggerEventSource OnEventChanged()
     }
 }

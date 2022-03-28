@@ -64,13 +64,11 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         protected override ITaggerEventSource CreateEventSource(ITextView textViewOpt, ITextBuffer subjectBuffer)
         {
             var service = subjectBuffer.AsTextContainer()?.GetOpenDocumentInCurrentContext().GetLanguageService<IInlineHintsService>();
-            if (service == null)
-                return;
 
             return TaggerEventSources.Compose(
                 TaggerEventSources.OnViewSpanChanged(ThreadingContext, textViewOpt),
                 TaggerEventSources.OnWorkspaceChanged(subjectBuffer, _listener),
-                TaggerEventSources.OnEventChanged(
+                TaggerEventSources.OnEventChanged(service.),
                 //TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsGlobalStateOption.DisplayAllOverride),
                 TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsOptionsStorage.EnabledForParameters),
                 TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsOptionsStorage.ForLiteralParameters),
