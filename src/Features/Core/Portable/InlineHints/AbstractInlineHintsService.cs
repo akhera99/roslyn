@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,18 @@ namespace Microsoft.CodeAnalysis.InlineHints
 {
     internal abstract class AbstractInlineHintsService : IInlineHintsService
     {
+        public event EventHandler OnDisplayAllChanged;
+
+        public AbstractInlineHintsService()
+        {
+            OnDisplayAllChanged += AbstractInlineHintsService_OnDisplayAllChanged;
+        }
+
+        private void AbstractInlineHintsService_OnDisplayAllChanged(object? sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<ImmutableArray<InlineHint>> GetInlineHintsAsync(
             Document document, TextSpan textSpan, InlineHintsOptions options, CancellationToken cancellationToken)
         {
@@ -29,6 +42,11 @@ namespace Microsoft.CodeAnalysis.InlineHints
                 : await inlineTypeService.GetInlineHintsAsync(document, textSpan, options.TypeOptions, options.DisplayOptions, cancellationToken).ConfigureAwait(false);
 
             return parameters.Concat(types);
+        }
+
+        public void SetDisplayAllInlineHints(bool display)
+        {
+            throw new NotImplementedException();
         }
     }
 }

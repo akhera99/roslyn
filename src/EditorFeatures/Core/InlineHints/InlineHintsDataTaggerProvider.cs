@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis.InlineHints;
 using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Text.Shared.Extensions;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
@@ -62,10 +63,15 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
 
         protected override ITaggerEventSource CreateEventSource(ITextView textViewOpt, ITextBuffer subjectBuffer)
         {
+            var service = subjectBuffer.AsTextContainer()?.GetOpenDocumentInCurrentContext().GetLanguageService<IInlineHintsService>();
+            if (service == null)
+                return;
+
             return TaggerEventSources.Compose(
                 TaggerEventSources.OnViewSpanChanged(ThreadingContext, textViewOpt),
                 TaggerEventSources.OnWorkspaceChanged(subjectBuffer, _listener),
-                TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsGlobalStateOption.DisplayAllOverride),
+                TaggerEventSources.OnEventChanged(
+                //TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsGlobalStateOption.DisplayAllOverride),
                 TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsOptionsStorage.EnabledForParameters),
                 TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsOptionsStorage.ForLiteralParameters),
                 TaggerEventSources.OnOptionChanged(subjectBuffer, InlineHintsOptionsStorage.ForIndexerParameters),
