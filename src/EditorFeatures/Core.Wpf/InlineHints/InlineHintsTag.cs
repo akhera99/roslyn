@@ -26,6 +26,7 @@ using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
+using Microsoft.VisualStudio.Text.Tagging;
 
 namespace Microsoft.CodeAnalysis.Editor.InlineHints
 {
@@ -46,7 +47,6 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             FrameworkElement adornment,
             ITextView textView,
             SnapshotSpan span,
-            InlineHint hint,
             InlineHintsTaggerProvider taggerProvider)
             : base(adornment,
                    removalCallback: null,
@@ -54,10 +54,9 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         {
             _textView = textView;
             _span = span;
-            _hint = hint;
             _taggerProvider = taggerProvider;
 
-            // Sets the tooltip to a string so that the tool tip opening event can be triggered
+            /*// Sets the tooltip to a string so that the tool tip opening event can be triggered
             // Tooltip value does not matter at this point because it immediately gets overwritten by the correct
             // information in the Border_ToolTipOpening event handler
             adornment.ToolTip = "Quick info";
@@ -66,7 +65,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             if (_hint.ReplacementTextChange is not null)
             {
                 adornment.MouseLeftButtonDown += Adornment_MouseLeftButtonDown;
-            }
+            }*/
         }
 
         /// <summary>
@@ -76,7 +75,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         /// <param name="textView">The view of the editor</param>
         /// <param name="span">The span that has the location of the hint</param>
         public static InlineHintsTag Create(
-            InlineHint hint,
+            List<(int, IMappingTagSpan<InlineHintDataTag>)> hints,
             TextFormattingRunProperties format,
             IWpfTextView textView,
             SnapshotSpan span,
@@ -85,8 +84,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             bool classify)
         {
             return new InlineHintsTag(
-                CreateElement(hint.DisplayParts, textView, format, formatMap, taggerProvider.TypeMap, classify),
-                textView, span, hint, taggerProvider);
+                CreateElement(hints, textView, format, formatMap, taggerProvider.TypeMap, classify),
+                textView, span, taggerProvider);
         }
 
         public async Task<IReadOnlyCollection<object>> CreateDescriptionAsync(CancellationToken cancellationToken)
@@ -112,88 +111,95 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         }
 
         private static FrameworkElement CreateElement(
-            ImmutableArray<TaggedText> taggedTexts,
+            List<(int, IMappingTagSpan<InlineHintDataTag>)> hintList,
             IWpfTextView textView,
             TextFormattingRunProperties format,
             IClassificationFormatMap formatMap,
             ClassificationTypeMap typeMap,
             bool classify)
         {
-            // Constructs the hint block which gets assigned parameter name and fontstyles according to the options
-            // page. Calculates a inline tag that will be 3/4s the size of a normal line. This shrink size tends to work
-            // well with VS at any zoom level or font size.
-            var block = new TextBlock
+
+            var mainStackPanel = new StackPanel();
+            foreach (var (_, hint) in hintList)
             {
-                FontFamily = format.Typeface.FontFamily,
-                FontSize = 0.75 * format.FontRenderingEmSize,
-                FontStyle = FontStyles.Normal,
-                Foreground = format.ForegroundBrush,
-                // Adds a little bit of padding to the left of the text relative to the border to make the text seem
-                // more balanced in the border
-                Padding = new Thickness(left: 2, top: 0, right: 2, bottom: 0)
-            };
-
-            var (trimmedTexts, leftPadding, rightPadding) = Trim(taggedTexts);
-
-            foreach (var taggedText in trimmedTexts)
-            {
-                var run = new Run(taggedText.ToVisibleDisplayString(includeLeftToRightMarker: true));
-
-                if (classify && taggedText.Tag != TextTags.Text)
+                // Constructs the hint block which gets assigned parameter name and fontstyles according to the options
+                // page. Calculates a inline tag that will be 3/4s the size of a normal line. This shrink size tends to work
+                // well with VS at any zoom level or font size.
+                var block = new TextBlock
                 {
-                    var properties = formatMap.GetTextProperties(typeMap.GetClassificationType(taggedText.Tag.ToClassificationTypeName()));
-                    var brush = properties.ForegroundBrush.Clone();
-                    run.Foreground = brush;
+                    FontFamily = format.Typeface.FontFamily,
+                    FontSize = 0.75 * format.FontRenderingEmSize,
+                    FontStyle = FontStyles.Normal,
+                    Foreground = format.ForegroundBrush,
+                    // Adds a little bit of padding to the left of the text relative to the border to make the text seem
+                    // more balanced in the border
+                    Padding = new Thickness(left: 2, top: 0, right: 2, bottom: 0)
+                };
+
+                var (trimmedTexts, leftPadding, rightPadding) = Trim(hint.Tag.Hint.DisplayParts);
+
+                foreach (var taggedText in trimmedTexts)
+                {
+                    var run = new Run(taggedText.ToVisibleDisplayString(includeLeftToRightMarker: true));
+
+                    if (classify && taggedText.Tag != TextTags.Text)
+                    {
+                        var properties = formatMap.GetTextProperties(typeMap.GetClassificationType(taggedText.Tag.ToClassificationTypeName()));
+                        var brush = properties.ForegroundBrush.Clone();
+                        run.Foreground = brush;
+                    }
+
+                    block.Inlines.Add(run);
                 }
 
-                block.Inlines.Add(run);
+                block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
+                // Encapsulates the textblock within a border. Gets foreground/background colors from the options menu.
+                // If the tag is started or followed by a space, we trim that off but represent the space as buffer on hte
+                // left or right side.
+                var left = leftPadding * 5;
+                var right = rightPadding * 5;
+
+                var border = new Border
+                {
+                    Background = format.BackgroundBrush,
+                    Child = block,
+                    CornerRadius = new CornerRadius(2),
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(left, top: 0, right, bottom: 0),
+                };
+
+                // gets pixel distance of baseline to top of the font height
+                var dockPanelHeight = format.Typeface.FontFamily.Baseline * format.FontRenderingEmSize;
+                var dockPanel = new DockPanel
+                {
+                    Height = dockPanelHeight,
+                    LastChildFill = false,
+                    // VerticalAlignment is set to Top because it will rest to the top relative to the stackpanel
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+
+                dockPanel.Children.Add(border);
+                DockPanel.SetDock(border, Dock.Bottom);
+
+                var stackPanel = new StackPanel
+                {
+                    // Height set to align the baseline of the text within the TextBlock with the baseline of text in the editor
+                    Height = dockPanelHeight + (block.DesiredSize.Height - (block.FontFamily.Baseline * block.FontSize)),
+                    Orientation = Orientation.Vertical
+                };
+
+                stackPanel.Children.Add(dockPanel);
+                mainStackPanel.Children.Add(stackPanel);
             }
 
-            block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-
-            // Encapsulates the textblock within a border. Gets foreground/background colors from the options menu.
-            // If the tag is started or followed by a space, we trim that off but represent the space as buffer on hte
-            // left or right side.
-            var left = leftPadding * 5;
-            var right = rightPadding * 5;
-
-            var border = new Border
-            {
-                Background = format.BackgroundBrush,
-                Child = block,
-                CornerRadius = new CornerRadius(2),
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(left, top: 0, right, bottom: 0),
-            };
-
-            // gets pixel distance of baseline to top of the font height
-            var dockPanelHeight = format.Typeface.FontFamily.Baseline * format.FontRenderingEmSize;
-            var dockPanel = new DockPanel
-            {
-                Height = dockPanelHeight,
-                LastChildFill = false,
-                // VerticalAlignment is set to Top because it will rest to the top relative to the stackpanel
-                VerticalAlignment = VerticalAlignment.Top
-            };
-
-            dockPanel.Children.Add(border);
-            DockPanel.SetDock(border, Dock.Bottom);
-
-            var stackPanel = new StackPanel
-            {
-                // Height set to align the baseline of the text within the TextBlock with the baseline of text in the editor
-                Height = dockPanelHeight + (block.DesiredSize.Height - (block.FontFamily.Baseline * block.FontSize)),
-                Orientation = Orientation.Vertical
-            };
-
-            stackPanel.Children.Add(dockPanel);
             // Need to set these properties to avoid unnecessary reformatting because some dependancy properties
             // affect layout
-            TextOptions.SetTextFormattingMode(stackPanel, TextOptions.GetTextFormattingMode(textView.VisualElement));
-            TextOptions.SetTextHintingMode(stackPanel, TextOptions.GetTextHintingMode(textView.VisualElement));
-            TextOptions.SetTextRenderingMode(stackPanel, TextOptions.GetTextRenderingMode(textView.VisualElement));
+            TextOptions.SetTextFormattingMode(mainStackPanel, TextOptions.GetTextFormattingMode(textView.VisualElement));
+            TextOptions.SetTextHintingMode(mainStackPanel, TextOptions.GetTextHintingMode(textView.VisualElement));
+            TextOptions.SetTextRenderingMode(mainStackPanel, TextOptions.GetTextRenderingMode(textView.VisualElement));
 
-            return stackPanel;
+            return mainStackPanel;
         }
 
         private static (ImmutableArray<TaggedText> texts, int leftPadding, int rightPadding) Trim(ImmutableArray<TaggedText> taggedTexts)
