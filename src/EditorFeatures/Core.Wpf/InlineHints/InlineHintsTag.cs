@@ -120,6 +120,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         {
 
             var mainStackPanel = new StackPanel();
+            var uiArray = new StackPanel[2];
+
             foreach (var (_, hint) in hintList)
             {
                 // Constructs the hint block which gets assigned parameter name and fontstyles according to the options
@@ -190,7 +192,20 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                 };
 
                 stackPanel.Children.Add(dockPanel);
-                mainStackPanel.Children.Add(stackPanel);
+                if (hint.Tag.Hint.DisplayParts.Length > 1)
+                {
+                    uiArray[1] = stackPanel;
+                }
+                else
+                {
+                    uiArray[0] = stackPanel;
+                }
+
+                // Need to set these properties to avoid unnecessary reformatting because some dependancy properties
+                // affect layout
+                TextOptions.SetTextFormattingMode(stackPanel, TextOptions.GetTextFormattingMode(textView.VisualElement));
+                TextOptions.SetTextHintingMode(stackPanel, TextOptions.GetTextHintingMode(textView.VisualElement));
+                TextOptions.SetTextRenderingMode(stackPanel, TextOptions.GetTextRenderingMode(textView.VisualElement));
             }
 
             // Need to set these properties to avoid unnecessary reformatting because some dependancy properties
@@ -198,6 +213,20 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             TextOptions.SetTextFormattingMode(mainStackPanel, TextOptions.GetTextFormattingMode(textView.VisualElement));
             TextOptions.SetTextHintingMode(mainStackPanel, TextOptions.GetTextHintingMode(textView.VisualElement));
             TextOptions.SetTextRenderingMode(mainStackPanel, TextOptions.GetTextRenderingMode(textView.VisualElement));
+
+            if (uiArray[0] != null)
+            {
+                mainStackPanel.Children.Add(uiArray[0]);
+            }
+
+            if (uiArray[1] != null)
+            {
+                mainStackPanel.Children.Add(uiArray[1]);
+            }
+
+            mainStackPanel.Orientation = Orientation.Horizontal;
+
+            mainStackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
 
             return mainStackPanel;
         }

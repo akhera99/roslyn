@@ -147,13 +147,21 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                     }
                 }
 
+                for (var i = 0; i < _cache.Count - 1; i += 2)
+                {
+                    if (_cache[i].mappingTagSpan.Tag.Hint.Span.Start == _cache[i + 1].mappingTagSpan.Tag.Hint.Span.Start)
+                    {
+                        Debug.Assert(_cache[i].mappingTagSpan.Tag.Hint.DisplayParts.Length < _cache[i + 1].mappingTagSpan.Tag.Hint.DisplayParts.Length);
+                    }
+                }
+
                 var document = snapshot.GetOpenDocumentInCurrentContextWithChanges();
                 var classify = document != null && _taggerProvider.GlobalOptions.GetOption(InlineHintsViewOptions.ColorHints, document.Project.Language);
 
                 var selectedSpans = new List<ITagSpan<IntraTextAdornmentTag>>();
 
 
-                var spansToDraw = new Dictionary<IMappingSpan, List<(int, IMappingTagSpan<InlineHintDataTag>)>>();
+                var spansToDraw = new Dictionary<int, List<(int, IMappingTagSpan<InlineHintDataTag>)>>();
 
                 for (var i = 0; i < _cache.Count; i++)
                 {
@@ -171,10 +179,10 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                         }
                         else
                         {
-                            if (!spansToDraw.TryGetValue(_cache[i].mappingTagSpan.Span, out var list))
+                            if (!spansToDraw.TryGetValue(_cache[i].mappingTagSpan.Tag.Hint.Span.Start, out var list))
                             {
                                 list = new List<(int, IMappingTagSpan<InlineHintDataTag>)>();
-                                spansToDraw.Add(_cache[i].mappingTagSpan.Span, list);
+                                spansToDraw.Add(_cache[i].mappingTagSpan.Tag.Hint.Span.Start, list);
                             }
 
                             list.Add((i, _cache[i].mappingTagSpan));
