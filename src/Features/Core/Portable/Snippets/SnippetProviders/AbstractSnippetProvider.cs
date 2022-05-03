@@ -59,6 +59,8 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// </summary>
         protected abstract ImmutableArray<SnippetPlaceholder> GetPlaceHolderLocationsList(SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken);
 
+        protected abstract int GetCursorIdentation(Document document, SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken);
+
         /// <summary>
         /// Determines if the location is valid for a snippet,
         /// if so, then it creates a SnippetData.

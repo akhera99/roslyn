@@ -14,6 +14,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.LanguageServices;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.Extensions.ContextQuery;
@@ -32,6 +33,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
         public CSharpIfSnippetProvider()
         {
+        }
+
+        protected override int GetCursorIdentation(Document document, SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }
