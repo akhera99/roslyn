@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Reflection;
 using System.Text;
+using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.LanguageServer;
 using Microsoft.CodeAnalysis.Text;
@@ -53,10 +54,21 @@ namespace Microsoft.CodeAnalysis.Snippets
             {
                 // ExpanderMethodInfo should not be null at this point.
                 var expandMethodResult = _expanderMethodInfo!.Invoke(_lspSnippetExpander, new object[] { textEdit, textView, textSnapshot });
-                return expandMethodResult is not null && (bool)expandMethodResult;
+                if (expandMethodResult is null)
+                {
+                    throw new Exception("The result of the invoked LSP snippet expander is null.");
+                }
+
+                if (!(bool)expandMethodResult)
+                {
+                    throw new Exception("The invoked LSP snippet expander came back as false.");
+                }
+
+                return true;
             }
-            catch
+            catch (Exception e)
             {
+                FatalError.ReportAndCatch(e);
                 return false;
             }
         }

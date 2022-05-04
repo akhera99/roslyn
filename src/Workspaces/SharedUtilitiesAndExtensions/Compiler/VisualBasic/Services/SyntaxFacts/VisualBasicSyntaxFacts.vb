@@ -1871,10 +1871,6 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.LanguageServices
             whenFalse = conditionalExpression.WhenFalse
         End Sub
 
-        Public Sub GetPartsOfIfStatement(node As SyntaxNode, ByRef condition As SyntaxNode, ByRef statement As SyntaxNode) Implements ISyntaxFacts.GetPartsOfIfStatement
-            Throw New NotImplementedException
-        End Sub
-
         Public Sub GetPartsOfInvocationExpression(node As SyntaxNode, ByRef expression As SyntaxNode, ByRef argumentList As SyntaxNode) Implements ISyntaxFacts.GetPartsOfInvocationExpression
             Dim invocation = DirectCast(node, InvocationExpressionSyntax)
             expression = invocation.Expression
@@ -1938,10 +1934,6 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.LanguageServices
 
         Public Function GetExpressionOfThrowExpression(node As SyntaxNode) As SyntaxNode Implements ISyntaxFacts.GetExpressionOfThrowExpression
             ' ThrowExpression doesn't exist in VB
-            Throw New NotImplementedException()
-        End Function
-
-        Public Function GetStatementOfGlobalStatement(node As SyntaxNode) As SyntaxNode Implements ISyntaxFacts.GetStatementOfGlobalStatement
             Throw New NotImplementedException()
         End Function
 
