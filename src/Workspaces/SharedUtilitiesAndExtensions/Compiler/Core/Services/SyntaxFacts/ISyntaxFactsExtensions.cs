@@ -669,6 +669,8 @@ namespace Microsoft.CodeAnalysis.LanguageServices
         #endregion
 
         #region tokens
+        public static bool IsCloseBraceToken(this ISyntaxFacts syntaxFacts, SyntaxToken token)
+            => token.RawKind == syntaxFacts.SyntaxKinds.CloseBraceToken;
 
         public static bool IsIdentifier(this ISyntaxFacts syntaxFacts, SyntaxToken token)
             => token.RawKind == syntaxFacts.SyntaxKinds.IdentifierToken;

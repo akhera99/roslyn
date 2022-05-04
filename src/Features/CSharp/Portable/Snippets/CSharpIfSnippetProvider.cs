@@ -35,11 +35,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         {
         }
 
-        protected override int GetCursorIdentation(Document document, SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
+        protected override SyntaxToken GenerateNewLineToken(SyntaxToken token, string newText)
         {
-            throw new NotImplementedException();
+            return SyntaxFactory.Token(token.LeadingTrivia, SyntaxKind.CloseBraceToken, newText, newText, token.TrailingTrivia);
         }
-        
+
         protected override void GetIfStatementConditionAndCursorPosition(SyntaxNode node, out SyntaxNode condition, out int cursorPositionNode)
         {
             var ifStatement = (IfStatementSyntax)node;

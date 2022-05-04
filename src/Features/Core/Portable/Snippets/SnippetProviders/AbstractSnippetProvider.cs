@@ -15,6 +15,7 @@ using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.ExtractMethod;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host;
+using Microsoft.CodeAnalysis.Indentation;
 using Microsoft.CodeAnalysis.LanguageServices;
 using Microsoft.CodeAnalysis.NavigateTo;
 using Microsoft.CodeAnalysis.Shared.Extensions;
@@ -59,7 +60,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// </summary>
         protected abstract ImmutableArray<SnippetPlaceholder> GetPlaceHolderLocationsList(SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken);
 
-        protected abstract int GetCursorIdentation(Document document, SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken);
+        protected abstract SyntaxToken GenerateNewLineToken(SyntaxToken token, string newText);
 
         /// <summary>
         /// Determines if the location is valid for a snippet,
@@ -111,13 +112,15 @@ namespace Microsoft.CodeAnalysis.Snippets
             var caretTarget = reformattedRoot.GetAnnotatedNodes(_cursorAnnotation).FirstOrDefault();
             var mainChangeNode = reformattedRoot.GetAnnotatedNodes(_findSnippetAnnotation).FirstOrDefault();
 
-            // All the TextChanges from the original document. Will include any imports (if necessary) and all snippet associated
-            // changes after having been formatted.
-            var changes = await reformattedDocument.GetTextChangesAsync(document, cancellationToken).ConfigureAwait(false);
+            var snippetWithInsertedIdentation = await GetSnippetWithAddedIdentationAsync(reformattedDocument, mainChangeNode, syntaxFacts, cancellationToken).ConfigureAwait(false);
 
             // Gets a listing of the identifiers that need to be found in the snippet TextChange
             // and their associated TextSpan so they can later be converted into an LSP snippet format.
             var placeholders = GetPlaceHolderLocationsList(mainChangeNode, syntaxFacts, cancellationToken);
+
+            // All the TextChanges from the original document. Will include any imports (if necessary) and all snippet associated
+            // changes after having been formatted.
+            var changes = await reformattedDocument.GetTextChangesAsync(document, cancellationToken).ConfigureAwait(false);
 
             // All the changes from the original document to the most updated. Will later be
             // collpased into one collapsed TextChange.
@@ -144,6 +147,25 @@ namespace Microsoft.CodeAnalysis.Snippets
                 .WithPrependedLeadingTrivia(syntaxFacts.ElasticMarker));
 
             return nodeWithTrivia;
+        }
+
+        private async Task<SyntaxNode> GetSnippetWithAddedIdentationAsync(Document document, SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
+        {
+            var formattingOptions = await document.GetSyntaxFormattingOptionsAsync(fallbackOptions: null, cancellationToken).ConfigureAwait(false);
+            var indentationOptions = new IndentationOptions(formattingOptions, AutoFormattingOptions.Default);
+
+            foreach (var token in node.DescendantTokens())
+            {
+                if (syntaxFacts.IsCloseBraceToken(token))
+                {
+                    var indentation = token.GetPreferredIndentation(document, indentationOptions, cancellationToken);
+                    var newString = indentation + formattingOptions.NewLine + token.ToFullString();
+                    var newToken = GenerateNewLineToken(token, newString);
+                    node = node.ReplaceToken(token, newToken);
+                }
+            }
+
+            return node;
         }
 
         private async Task<Document> CleanupDocumentAsync(

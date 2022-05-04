@@ -34,6 +34,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         {
         }
 
+        protected override SyntaxToken GenerateNewLineToken(SyntaxToken token, string newText)
+        {
+            throw new NotImplementedException();
+        }
+
         protected override SyntaxNode? GetAsyncSupportingDeclaration(SyntaxToken token)
         {
             var node = token.GetAncestor(node => node.IsAsyncSupportingFunctionSyntax());
