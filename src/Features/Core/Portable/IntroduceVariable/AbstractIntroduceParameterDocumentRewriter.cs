@@ -611,7 +611,8 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
             private static bool ShouldParameterBeSkipped(Compilation compilation, IParameterSymbol parameter)
                 => !parameter.HasExplicitDefaultValue &&
                    !parameter.IsParams &&
-                   !parameter.Type.Equals(compilation.GetTypeByMetadataName(typeof(CancellationToken)?.FullName!));
+                   !parameter.Type.Equals(compilation.GetTypeByMetadataName(typeof(CancellationToken)?.FullName!)) &&
+                   !parameter.RefKind.Equals(RefKind.Out);
 
             private void MapParameterToArgumentsAtInvocation(
                 Dictionary<IParameterSymbol, int> mapping, SeparatedSyntaxList<SyntaxNode> arguments,
