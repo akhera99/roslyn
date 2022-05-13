@@ -6,6 +6,7 @@ Imports Microsoft.CodeAnalysis.Completion
 Imports Microsoft.CodeAnalysis.Completion.Providers
 Imports Microsoft.CodeAnalysis.Editor.UnitTests
 Imports Microsoft.CodeAnalysis.Shared.Utilities
+Imports Microsoft.CodeAnalysis.VisualBasic.Completion.CompletionProviders.Snippets
 Imports Microsoft.CodeAnalysis.VisualBasic.Completion.Providers
 
 Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.UnitTests.Completion
@@ -44,6 +45,7 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.UnitTests.Completion
                 GetType(AggregateEmbeddedLanguageCompletionProvider),
                 GetType(TypeImportCompletionProvider),
                 GetType(ExtensionMethodImportCompletionProvider),
+                GetType(VisualBasicSnippetCompletionProvider),
                 GetType(LastBuiltInCompletionProvider)
                 }
 

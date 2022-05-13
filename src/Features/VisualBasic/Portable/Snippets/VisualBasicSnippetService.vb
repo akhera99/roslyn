@@ -6,21 +6,16 @@ Imports System.Composition
 Imports Microsoft.CodeAnalysis.Host.Mef
 Imports Microsoft.CodeAnalysis.Snippets
 Imports Microsoft.CodeAnalysis.Snippets.SnippetProviders
-Imports Microsoft.CodeAnalysis.VisualBasic.Completion.KeywordRecommenders.Declarations
 
 Namespace Microsoft.CodeAnalysis.VisualBasic.Snippets
-    <ExportSnippetProvider(NameOf(ISnippetProvider), LanguageNames.VisualBasic), [Shared]>
-    Friend Class VisualBasicConsoleSnippetProvider
-        Inherits AbstractConsoleSnippetProvider
+    <ExportSnippetProvider(NameOf(ISnippetService), LanguageNames.VisualBasic), [Shared]>
+    Friend Class VisualBasicSnippetService
+        Inherits AbstractSnippetService
 
         <ImportingConstructor>
         <Obsolete(MefConstruction.ImportingConstructorMessage, True)>
-        Public Sub New()
+        Public Sub New(<ImportMany()> lazySnippetProviders As IEnumerable(Of Lazy(Of ISnippetProvider, LanguageMetadata)))
+            MyBase.New(lazySnippetProviders)
         End Sub
-
-        Protected Overrides Function GetAsyncSupportingDeclaration(token As SyntaxToken) As SyntaxNode
-            Dim node = token.GetAncestor(Function(n) n.IsAsyncSupportedFunctionSyntax)
-            Return node
-        End Function
     End Class
 End Namespace

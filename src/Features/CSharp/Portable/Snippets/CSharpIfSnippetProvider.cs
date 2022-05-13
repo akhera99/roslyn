@@ -34,11 +34,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         {
         }
 
-        protected override void GetIfStatementConditionAndCursorPosition(SyntaxNode node, out SyntaxNode condition, out int cursorPositionNode)
+        protected override void GetIfStatementConditionAndCursorPosition(SyntaxNode node, out SyntaxNode condition, out int cursorPosition)
         {
             var ifStatement = (IfStatementSyntax)node;
             condition = ifStatement.Condition;
-            cursorPositionNode = ifStatement.Statement.SpanStart + 1;
+            cursorPosition = ifStatement.Statement.SpanStart + 1;
         }
     }
 }
