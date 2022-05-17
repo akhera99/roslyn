@@ -9,7 +9,7 @@ using System.Text;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Snippets;
 
-namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Completion.CompletionProviders.Snippets
+namespace Microsoft.CodeAnalysis.Test.Utilities.Snippets
 {
     [Export(typeof(IRoslynLSPSnippetExpander))]
     [Shared]

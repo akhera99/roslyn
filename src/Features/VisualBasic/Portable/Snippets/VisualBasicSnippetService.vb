@@ -8,7 +8,7 @@ Imports Microsoft.CodeAnalysis.Snippets
 Imports Microsoft.CodeAnalysis.Snippets.SnippetProviders
 
 Namespace Microsoft.CodeAnalysis.VisualBasic.Snippets
-    <ExportSnippetProvider(NameOf(ISnippetService), LanguageNames.VisualBasic), [Shared]>
+    <ExportLanguageService(GetType(ISnippetService), LanguageNames.VisualBasic), [Shared]>
     Friend Class VisualBasicSnippetService
         Inherits AbstractSnippetService
 
