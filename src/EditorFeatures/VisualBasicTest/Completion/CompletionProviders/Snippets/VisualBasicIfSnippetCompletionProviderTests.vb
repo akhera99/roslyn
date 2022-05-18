@@ -33,6 +33,26 @@ End Class"
         End Function
 
         <WpfFact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function InsertIfSnippetInMethodWithInvokingTextTest() As Task
+            Dim markupBeforeCommit =
+$"Public Class TestClass
+    Public Sub TestMethod()
+        Ins$$
+    End Sub
+End Class"
+
+            Dim markupAfterCommit =
+$"Public Class TestClass
+    Public Sub TestMethod()
+        If True Then$$
+        End If
+    End Sub
+End Class"
+
+            Await VerifyCustomCommitProviderAsync(markupBeforeCommit, ItemToCommit, markupAfterCommit)
+        End Function
+
+        <WpfFact, Trait(Traits.Feature, Traits.Features.Completion)>
         Public Async Function NoIfSnippetGlobalTest() As Task
             Dim markupBeforeCommit =
 $"$$
