@@ -22,7 +22,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.Snippets
         Protected Overrides Sub GetIfStatementConditionAndCursorPosition(node As SyntaxNode, ByRef condition As SyntaxNode, ByRef cursorPosition As Integer)
             Dim ifStatement = DirectCast(node, IfStatementSyntax)
             condition = ifStatement.Condition
-            cursorPosition = ifStatement.ThenKeyword.Span.End + 1
+            cursorPosition = ifStatement.ThenKeyword.Span.End
         End Sub
     End Class
 End Namespace

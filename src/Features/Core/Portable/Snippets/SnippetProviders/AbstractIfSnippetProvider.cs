@@ -47,7 +47,7 @@ namespace Microsoft.CodeAnalysis.Snippets
             var generator = SyntaxGenerator.GetGenerator(document);
             var ifStatement = generator.IfStatement(generator.TrueLiteralExpression(), Array.Empty<SyntaxNode>());
 
-            return new TextChange(TextSpan.FromBounds(position, position), ifStatement.ToFullString());
+            return new TextChange(TextSpan.FromBounds(position, position), ifStatement.NormalizeWhitespace().ToFullString());
         }
 
         protected override int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget)
