@@ -402,7 +402,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             var testString = "foo bar quux baz";
             using var workspace = CreateWorkspaceFromCode(testString);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
-            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, 12, ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(8, 0), "quux"), CancellationToken.None).Result;
+            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, 12, 0, ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(8, 0), "quux"), CancellationToken.None).Result;
             AssertEx.EqualOrDiff("quux$0", lspSnippetString);
         }
 
@@ -412,7 +412,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             var testString = "foo bar quux baz";
             using var workspace = CreateWorkspaceFromCode(testString);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
-            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, 12, ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(4, 4), "bar quux"), CancellationToken.None).Result;
+            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, 12, 0, ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(4, 4), "bar quux"), CancellationToken.None).Result;
             AssertEx.EqualOrDiff("bar quux$0", lspSnippetString);
         }
 
@@ -494,7 +494,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             using var workspace = CreateWorkspaceFromCode(markup);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
 
-            var lspSnippetString = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, cursorPosition!.Value, placeholders, textChange, CancellationToken.None).ConfigureAwait(false);
+            var lspSnippetString = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, cursorPosition!.Value, stringSpan.Start, placeholders, textChange, CancellationToken.None).ConfigureAwait(false);
             AssertEx.EqualOrDiff(output, lspSnippetString);
         }
 

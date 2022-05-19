@@ -41,15 +41,14 @@ namespace Microsoft.CodeAnalysis.Completion.Providers.Snippets
             // This introduces the text changes of the snippet into the document with the completion invoking text
             var allChangesText = strippedText.WithChanges(snippet.TextChanges);
 
-            // This retrieves ALL text changes from the original document which includes the TextChanges from the snippet
-            // as well as the clean up.
+            // This retrieves ALL text changes from the stripped document which includes the TextChanges from the snippet
             var allChangesDocument = document.WithText(allChangesText);
             var allTextChanges = await allChangesDocument.GetTextChangesAsync(document, cancellationToken).ConfigureAwait(false);
 
             var change = Utilities.Collapse(allChangesText, allTextChanges.AsImmutable());
 
             // Converts the snippet to an LSP formatted snippet string.
-            var lspSnippet = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPosition, snippet.Placeholders, change, cancellationToken).ConfigureAwait(false);
+            var lspSnippet = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPosition, item.Span.Start, snippet.Placeholders, change, cancellationToken).ConfigureAwait(false);
             var props = ImmutableDictionary<string, string>.Empty
                 .Add(SnippetCompletionItem.LSPSnippetKey, lspSnippet);
 

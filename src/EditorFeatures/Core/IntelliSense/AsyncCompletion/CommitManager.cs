@@ -241,19 +241,19 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.AsyncComplet
                 return new AsyncCompletionData.CommitResult(isHandled: true, AsyncCompletionData.CommitBehavior.None);
             }
 
+            var textChange = change.TextChange;
+            var triggerSnapshotSpan = new SnapshotSpan(triggerSnapshot, textChange.Span.ToSpan());
+            var mappedSpan = triggerSnapshotSpan.TranslateTo(subjectBuffer.CurrentSnapshot, SpanTrackingMode.EdgeInclusive);
+
             // Specifically for snippets, we use reflection to try and invoke the LanguageServerSnippetExpander's
             // TryExpand method and determine if it succeeded or not.
             if (SnippetCompletionItem.IsSnippet(roslynItem))
             {
                 var lspSnippetText = change.Properties[SnippetCompletionItem.LSPSnippetKey];
 
-                _roslynLSPSnippetExpander.Expand(change.TextChange.Span, lspSnippetText, _textView, triggerSnapshot);
+                _roslynLSPSnippetExpander.Expand(change.TextChange.Span, lspSnippetText, _textView, mappedSpan.Snapshot);
                 return new AsyncCompletionData.CommitResult(isHandled: true, AsyncCompletionData.CommitBehavior.None);
             }
-
-            var textChange = change.TextChange;
-            var triggerSnapshotSpan = new SnapshotSpan(triggerSnapshot, textChange.Span.ToSpan());
-            var mappedSpan = triggerSnapshotSpan.TranslateTo(subjectBuffer.CurrentSnapshot, SpanTrackingMode.EdgeInclusive);
 
             using (var edit = subjectBuffer.CreateEdit(EditOptions.DefaultMinimalChange, reiteratedVersionNumber: null, editTag: null))
             {
