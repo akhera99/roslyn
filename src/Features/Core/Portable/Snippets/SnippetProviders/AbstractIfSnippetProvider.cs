@@ -26,6 +26,9 @@ namespace Microsoft.CodeAnalysis.Snippets
 
         public override string SnippetDisplayName => FeaturesResources.Insert_an_if_statement;
 
+        public override string[] FilterTextItems => new string[3] { "if", "statement", "insert" };
+
+
         protected abstract void GetIfStatementConditionAndCursorPosition(SyntaxNode node, out SyntaxNode condition, out int cursorPositionNode);
 
         protected override async Task<bool> IsValidSnippetLocationAsync(Document document, int position, CancellationToken cancellationToken)

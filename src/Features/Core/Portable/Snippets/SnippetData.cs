@@ -17,11 +17,13 @@ namespace Microsoft.CodeAnalysis.Snippets
     {
         public readonly string DisplayName;
         public readonly string SnippetIdentifier;
+        public readonly string[] FilterTextItems;
 
-        public SnippetData(string displayName, string snippetIdentifier)
+        public SnippetData(string displayName, string snippetIdentifier, string[] filterTextItems)
         {
             DisplayName = displayName;
             SnippetIdentifier = snippetIdentifier;
+            FilterTextItems = filterTextItems;
         }
     }
 }

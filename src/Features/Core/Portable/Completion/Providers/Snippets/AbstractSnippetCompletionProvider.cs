@@ -83,6 +83,7 @@ namespace Microsoft.CodeAnalysis.Completion.Providers.Snippets
                     displayTextSuffix: "",
                     position: position,
                     snippetIdentifier: snippetData.SnippetIdentifier,
+                    filterTextItems: snippetData.FilterTextItems,
                     glyph: Glyph.Snippet);
                 context.AddItem(completionItem);
             }

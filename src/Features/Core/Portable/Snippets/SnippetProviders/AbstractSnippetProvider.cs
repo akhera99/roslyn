@@ -28,6 +28,7 @@ namespace Microsoft.CodeAnalysis.Snippets
     {
         public abstract string SnippetIdentifier { get; }
         public abstract string SnippetDisplayName { get; }
+        public abstract string[] FilterTextItems { get;  }
 
         protected readonly SyntaxAnnotation _cursorAnnotation = new();
         protected readonly SyntaxAnnotation _findSnippetAnnotation = new();
@@ -77,7 +78,7 @@ namespace Microsoft.CodeAnalysis.Snippets
                 return null;
             }
 
-            return new SnippetData(SnippetDisplayName, SnippetIdentifier);
+            return new SnippetData(SnippetDisplayName, SnippetIdentifier, FilterTextItems);
         }
 
         /// <summary>

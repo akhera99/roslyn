@@ -18,16 +18,20 @@ namespace Microsoft.CodeAnalysis.Completion.Providers.Snippets
             string displayTextSuffix,
             int position,
             string snippetIdentifier,
+            string[] filterTextItems,
             Glyph glyph)
         {
             var props = ImmutableDictionary<string, string>.Empty
                 .Add("Position", position.ToString())
                 .Add(SnippetIdentifierKey, snippetIdentifier);
 
+            var filterText = string.Join(" ", filterTextItems);
+
             return CommonCompletionItem.Create(
                 displayText: displayText,
                 displayTextSuffix: displayTextSuffix,
                 glyph: glyph,
+                sortText: filterText,
                 properties: props,
                 isComplexTextEdit: true,
                 rules: CompletionItemRules.Default);
