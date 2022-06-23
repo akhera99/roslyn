@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#nullable disable
 
 using System;
 using System.Collections.Generic;
@@ -21,6 +20,7 @@ using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.InlineRename;
 using Microsoft.CodeAnalysis.Internal.Log;
+using Microsoft.CodeAnalysis.LanguageServices;
 using Microsoft.CodeAnalysis.Notification;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Shared.Extensions;
@@ -56,6 +56,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
         private bool _isApplyingEdit;
         private string _replacementText;
         private SymbolRenameOptions _options;
+        private SyntaxNode? _renamedNode;
         private bool _previewChanges;
         private readonly Dictionary<ITextBuffer, OpenTextBufferManager> _openTextBuffers = new Dictionary<ITextBuffer, OpenTextBufferManager>();
 
@@ -120,6 +121,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
             IInlineRenameInfo renameInfo,
             SymbolRenameOptions options,
             bool previewChanges,
+            SyntaxNode renamedNode,
             IUIThreadOperationExecutor uiThreadOperationExecutor,
             ITextBufferAssociatedViewService textBufferAssociatedViewService,
             ITextBufferFactoryService textBufferFactoryService,
@@ -160,6 +162,8 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
             _options = options;
             _previewChanges = previewChanges;
 
+            _renamedNode = renamedNode;
+
             _initialRenameText = triggerSpan.GetText();
             this.ReplacementText = _initialRenameText;
 
@@ -180,7 +184,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
 
         public string OriginalSymbolName => _renameInfo.DisplayName;
 
-        // Used to aid the investigation of https://github.com/dotnet/roslyn/issues/7364
+        // Used to aid the investigation of https://github.com/dotnet/roslyn/iss`ues/7364
         private class NullTextBufferException : Exception
         {
 #pragma warning disable IDE0052 // Remove unread private members
@@ -194,6 +198,23 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
                 _document = document;
                 _text = text;
             }
+        }
+
+        private string? GetFileName()
+        {
+            if (_renamedNode is null)
+            {
+                return null;
+            }
+
+            var syntaxFacts = _triggerDocument.GetRequiredLanguageService<ISyntaxFactsService>();
+            if (!syntaxFacts.IsTypeDeclaration(_renamedNode))
+            {
+                return null;
+            }
+
+            var types = _renamedNode.Ancestors().Where(syntaxFacts.IsTypeDeclaration);
+            var 
         }
 
         private void InitializeOpenBuffers(SnapshotSpan triggerSpan)

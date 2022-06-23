@@ -104,6 +104,8 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
                 RenameFile: GlobalOptions.GetOption(InlineRenameSessionOptionsStorage.RenameFile));
 
             var previewChanges = GlobalOptions.GetOption(InlineRenameSessionOptionsStorage.PreviewChanges);
+            var root = await document.GetRequiredSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            var renamedNode = root.FindNode(textSpan);
 
             // The session currently has UI thread affinity.
             await _threadingContext.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
@@ -115,6 +117,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.InlineRename
                 renameInfo,
                 options,
                 previewChanges,
+                renamedNode,
                 _uiThreadOperationExecutor,
                 _textBufferAssociatedViewService,
                 _textBufferFactoryService,
