@@ -98,6 +98,13 @@ namespace Microsoft.CodeAnalysis.IntroduceVariable
                 return;
             }
 
+            var invocationExpression = expression.FirstAncestorOrSelf<SyntaxNode>(node => syntaxFacts.IsInvocationExpression(node));
+
+            if (invocationExpression is not null)
+            {
+                var expression = syntaxFacts.GetExpressionOfInvocationExpression(invocationExpression);
+            }
+
             var expressionSymbol = semanticModel.GetSymbolInfo(expression, cancellationToken).Symbol;
             if (expressionSymbol is IParameterSymbol parameterSymbol && parameterSymbol.ContainingSymbol.Equals(containingSymbol))
             {

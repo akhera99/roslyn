@@ -1989,5 +1989,40 @@ public class C
 
             await TestInRegularAndScriptAsync(code, expected, 0);
         }
+
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsIntroduceParameter)]
+        public async Task TestIntroduceParameterOnMethodWithDiscardParameter()
+        {
+            var code =
+@"
+M();
+int M(int _) => M([|1234|]);
+";
+
+            var expected =
+@"
+M();
+int M(int _) => M(1234);
+";
+
+            await TestInRegularAndScriptAsync(code, expected, 0);
+        }
+
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsIntroduceParameter)]
+        public async Task TestIntroduceParameterOnMethodWithRecursion()
+        {
+            var code =
+@"
+int M(int x) => M([|1234|]);
+";
+
+            var expected =
+@"
+M();
+int M(int _) => M(1234);
+";
+
+            await TestInRegularAndScriptAsync(code, expected, 0);
+        }
     }
 }
