@@ -2,13 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.ConvertToInterpolatedString;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Internal.Log;
 using Microsoft.CodeAnalysis.Shared.Extensions;
@@ -49,7 +46,7 @@ namespace Microsoft.CodeAnalysis.Completion.Providers.Snippets
             var change = Utilities.Collapse(allChangesText, allTextChanges.AsImmutable());
 
             // Converts the snippet to an LSP formatted snippet string.
-            var lspSnippet = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPosition, snippet.Placeholders, change, item.Span.Start, cancellationToken).ConfigureAwait(false);
+            var lspSnippet = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPositions, snippet.Placeholders, change, item.Span.Start, cancellationToken).ConfigureAwait(false);
 
             // If the TextChanges retrieved starts after the trigger point of the CompletionItem,
             // then we need to move the bounds backwards and encapsulate the trigger point.
@@ -64,7 +61,8 @@ namespace Microsoft.CodeAnalysis.Completion.Providers.Snippets
             var props = ImmutableDictionary<string, string>.Empty
                 .Add(SnippetCompletionItem.LSPSnippetKey, lspSnippet);
 
-            return CompletionChange.Create(change, allTextChanges.AsImmutable(), properties: props, snippet.CursorPosition, includesCommitCharacter: true);
+            var finalCursorPosition = snippet.CursorPositions.Where(s => s.CursorIndex == 0).First().PlaceHolderPositions.First();
+            return CompletionChange.Create(change, allTextChanges.AsImmutable(), properties: props, finalCursorPosition, includesCommitCharacter: true);
         }
 
         public override async Task ProvideCompletionsAsync(CompletionContext context)

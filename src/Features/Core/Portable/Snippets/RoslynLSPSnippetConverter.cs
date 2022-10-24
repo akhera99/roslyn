@@ -22,7 +22,8 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// Extends the TextChange to encompass all placeholder positions as well as caret position.
         /// Generates a LSP formatted snippet from a TextChange, list of placeholders, and caret position.
         /// </summary>
-        public static async Task<string> GenerateLSPSnippetAsync(Document document, int caretPosition, ImmutableArray<SnippetPlaceholder> placeholders, TextChange textChange, int triggerLocation, CancellationToken cancellationToken)
+        public static async Task<string> GenerateLSPSnippetAsync(
+            Document document, ImmutableArray<SnippetPlaceholder> caretPosition, ImmutableArray<SnippetPlaceholder> placeholders, TextChange textChange, int triggerLocation, CancellationToken cancellationToken)
         {
             var extendedTextChange = await ExtendSnippetTextChangeAsync(document, textChange, placeholders, caretPosition, triggerLocation, cancellationToken).ConfigureAwait(false);
             return ConvertToLSPSnippetString(extendedTextChange, placeholders, caretPosition);
@@ -32,7 +33,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// Iterates through every index in the snippet string and determines where the
         /// LSP formatted chunks should be inserted for each placeholder.
         /// </summary>
-        private static string ConvertToLSPSnippetString(TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, int caretPosition)
+        private static string ConvertToLSPSnippetString(TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, ImmutableArray<SnippetPlaceholder> caretPosition)
         {
             var textChangeStart = textChange.Span.Start;
             var textChangeText = textChange.NewText;
@@ -40,17 +41,19 @@ namespace Microsoft.CodeAnalysis.Snippets
 
             using var _1 = PooledStringBuilder.GetInstance(out var lspSnippetString);
             using var _2 = PooledDictionary<int, (string identifier, int priority)>.GetInstance(out var dictionary);
+            using var _3 = PooledDictionary<int, int>.GetInstance(out var tabStopDictionary);
             PopulateMapOfSpanStartsToLSPStringItem(dictionary, placeholders, textChangeStart);
+            PopulateMapOfCaretPositionsToLSPTabStopString(tabStopDictionary, caretPosition, textChangeStart);
 
-            // Need to go through the length + 1 since caret postions occur before and after the
+            // Need to go through the length + 1 since caret positions occur before and after the
             // character position.
             // If there is a caret at the end of the line, then it's position
             // will be equivalent to the length of the TextChange.
             for (var i = 0; i < textChange.Span.Length + 1;)
             {
-                if (i == caretPosition - textChangeStart)
+                if (tabStopDictionary.TryGetValue(i, out var priority))
                 {
-                    lspSnippetString.Append("$0");
+                    lspSnippetString.Append($"${{{priority}}}");
                 }
 
                 // Tries to see if a value exists at that position in the map, and if so it
@@ -86,17 +89,27 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// </summary>
         private static void PopulateMapOfSpanStartsToLSPStringItem(Dictionary<int, (string identifier, int priority)> dictionary, ImmutableArray<SnippetPlaceholder> placeholders, int textChangeStart)
         {
-            for (var i = 0; i < placeholders.Length; i++)
+            foreach (var placeholder in placeholders)
             {
-                var placeholder = placeholders[i];
                 foreach (var position in placeholder.PlaceHolderPositions)
                 {
-                    // i + 1 since the placeholder priority is set according to the index in the
-                    // placeholders array, starting at 1.
                     // We should never be adding two placeholders in the same position since identifiers
                     // must have a length greater than 0.
-                    dictionary.Add(position - textChangeStart, (placeholder.Identifier, i + 1));
+                    dictionary.Add(position - textChangeStart, (placeholder.Identifier, placeholder.CursorIndex));
                 }
+            }
+        }
+
+        private static void PopulateMapOfCaretPositionsToLSPTabStopString(Dictionary<int, int> dictionary, ImmutableArray<SnippetPlaceholder> caretPositions, int textChangeStart)
+        {
+            foreach (var placeholder in caretPositions)
+            {
+                // Will only be one placeholder position for a tab-stop
+                var position = placeholder.PlaceHolderPositions.First();
+
+                // We should never be adding two placeholders in the same position since identifiers
+                // must have a length greater than 0.
+                dictionary.Add(position - textChangeStart, placeholder.CursorIndex);
             }
         }
 
@@ -108,7 +121,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// This is important for the cases in which the document does not determine the TextChanges from
         /// the original document accurately.
         /// </summary>
-        private static async Task<TextChange> ExtendSnippetTextChangeAsync(Document document, TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, int caretPosition, int triggerLocation, CancellationToken cancellationToken)
+        private static async Task<TextChange> ExtendSnippetTextChangeAsync(Document document, TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, ImmutableArray<SnippetPlaceholder> caretPosition, int triggerLocation, CancellationToken cancellationToken)
         {
             var extendedSpan = GetUpdatedTextSpan(textChange, placeholders, caretPosition, triggerLocation);
             var documentText = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
@@ -123,7 +136,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// come before or after what is indicated by the snippet's TextChange.
         /// If so, adjust the starting and ending position accordingly.
         /// </summary>
-        private static TextSpan GetUpdatedTextSpan(TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, int caretPosition, int triggerLocation)
+        private static TextSpan GetUpdatedTextSpan(TextChange textChange, ImmutableArray<SnippetPlaceholder> placeholders, ImmutableArray<SnippetPlaceholder> caretPositions, int triggerLocation)
         {
             var textChangeText = textChange.NewText;
             Contract.ThrowIfNull(textChangeText);
@@ -137,8 +150,8 @@ namespace Microsoft.CodeAnalysis.Snippets
                 endPosition = Math.Max(endPosition, placeholders.Max(placeholder => placeholder.PlaceHolderPositions.Max()));
             }
 
-            startPosition = Math.Min(startPosition, caretPosition);
-            endPosition = Math.Max(endPosition, caretPosition);
+            startPosition = Math.Min(startPosition, caretPositions.Min(placeholder => placeholder.PlaceHolderPositions.Min()));
+            endPosition = Math.Max(endPosition, caretPositions.Max(placeholder => placeholder.PlaceHolderPositions.Max()));
 
             startPosition = Math.Min(startPosition, triggerLocation);
 

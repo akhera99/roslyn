@@ -44,7 +44,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// <summary>
         /// Gets the position that we want the caret to be at after all of the indentation/formatting has been done.
         /// </summary>
-        protected abstract int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText);
+        protected abstract ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText);
 
         /// <summary>
         /// Helper function to retrieve the specific type of snippet syntax when it needs to be searched for again.
@@ -86,10 +86,10 @@ namespace Microsoft.CodeAnalysis.Snippets
         {
             var syntaxFacts = document.GetRequiredLanguageService<ISyntaxFactsService>();
 
-            // Generates the snippet as a list of textchanges
+            // Generates the snippet as a list of TextChanges
             var textChanges = await GenerateSnippetTextChangesAsync(document, position, cancellationToken).ConfigureAwait(false);
 
-            // Applies the snippet textchanges to the document 
+            // Applies the snippet TextChanges to the document 
             var snippetDocument = await GetDocumentWithSnippetAsync(document, textChanges, cancellationToken).ConfigureAwait(false);
 
             // Finds the inserted snippet and replaces the node in the document with a node that has added trivia
@@ -102,7 +102,7 @@ namespace Microsoft.CodeAnalysis.Snippets
             // Goes through and calls upon the formatting engines that the previous step annotated.
             var reformattedDocument = await CleanupDocumentAsync(formatAnnotatedSnippetDocument, cancellationToken).ConfigureAwait(false);
 
-            // Finds the added snippet and adds identation where necessary (braces).
+            // Finds the added snippet and adds indentation where necessary (braces).
             var documentWithIndentation = await AddIndentationToDocumentAsync(reformattedDocument, position, syntaxFacts, cancellationToken).ConfigureAwait(false);
 
             var reformattedRoot = await documentWithIndentation.GetRequiredSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -120,13 +120,13 @@ namespace Microsoft.CodeAnalysis.Snippets
             var placeholders = GetPlaceHolderLocationsList(mainChangeNode, syntaxFacts, cancellationToken);
 
             // All the changes from the original document to the most updated. Will later be
-            // collpased into one collapsed TextChange.
+            // collapsed into one collapsed TextChange.
             var changesArray = changes.ToImmutableArray();
             var sourceText = await annotatedReformattedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
 
             return new SnippetChange(
                 textChanges: changesArray,
-                cursorPosition: GetTargetCaretPosition(syntaxFacts, caretTarget, sourceText),
+                cursorPositions: GetTargetCaretPosition(syntaxFacts, caretTarget, sourceText),
                 placeholders: placeholders);
         }
 
@@ -141,7 +141,7 @@ namespace Microsoft.CodeAnalysis.Snippets
             }
 
             var nodeWithTrivia = node.ReplaceTokens(node.DescendantTokens(descendIntoTrivia: true),
-                (oldtoken, _) => oldtoken.WithAdditionalAnnotations(SyntaxAnnotation.ElasticAnnotation)
+                (oldToken, _) => oldToken.WithAdditionalAnnotations(SyntaxAnnotation.ElasticAnnotation)
                 .WithAppendedTrailingTrivia(syntaxFacts.ElasticMarker)
                 .WithPrependedLeadingTrivia(syntaxFacts.ElasticMarker));
 
@@ -173,7 +173,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         }
 
         /// <summary>
-        /// Locates the snippet that was inserted. Generates trivia for every token in that syntaxnode.
+        /// Locates the snippet that was inserted. Generates trivia for every token in that SyntaxNode.
         /// Replaces the SyntaxNodes and gets back the new document.
         /// </summary>
         private async Task<Document> GetDocumentWithSnippetAndTriviaAsync(Document snippetDocument, int position, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)

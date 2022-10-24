@@ -85,22 +85,22 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// Tries to get the location after the open parentheses in the argument list.
         /// If it can't, then we default to the end of the snippet's span.
         /// </summary>
-        protected override int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
+        protected override ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
         {
             var invocationExpression = caretTarget.DescendantNodes().Where(syntaxFacts.IsInvocationExpression).FirstOrDefault();
             if (invocationExpression is null)
             {
-                return caretTarget.Span.End;
+                return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: caretTarget.Span.End));
             }
 
             var argumentListNode = syntaxFacts.GetArgumentListOfInvocationExpression(invocationExpression);
             if (argumentListNode is null)
             {
-                return caretTarget.Span.End;
+                return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: caretTarget.Span.End));
             }
 
             syntaxFacts.GetPartsOfArgumentList(argumentListNode, out var openParenToken, out _, out _);
-            return openParenToken.Span.End;
+            return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: openParenToken.Span.End));
         }
 
         protected override async Task<SyntaxNode> AnnotateNodesToReformatAsync(Document document,

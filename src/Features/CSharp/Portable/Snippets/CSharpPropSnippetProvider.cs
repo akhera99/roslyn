@@ -59,10 +59,10 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
                 accessibility: Accessibility.Public);
         }
 
-        protected override int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
+        protected override ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
         {
             var propertyDeclaration = (PropertyDeclarationSyntax)caretTarget;
-            return propertyDeclaration.AccessorList!.CloseBraceToken.Span.End;
+            return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: propertyDeclaration.AccessorList!.CloseBraceToken.Span.End));
         }
 
         protected override ImmutableArray<SnippetPlaceholder> GetPlaceHolderLocationsList(SyntaxNode node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
@@ -72,8 +72,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
             var identifier = propertyDeclaration.Identifier;
             var type = propertyDeclaration.Type;
 
-            arrayBuilder.Add(new SnippetPlaceholder(identifier: type.ToString(), placeholderPositions: ImmutableArray.Create(type.SpanStart)));
-            arrayBuilder.Add(new SnippetPlaceholder(identifier: identifier.ValueText, placeholderPositions: ImmutableArray.Create(identifier.SpanStart)));
+            arrayBuilder.Add(new SnippetPlaceholder(identifier: type.ToString(), cursorIndex: 1, placeholderPositions: ImmutableArray.Create(type.SpanStart)));
+            arrayBuilder.Add(new SnippetPlaceholder(identifier: identifier.ValueText, cursorIndex: 2, placeholderPositions: ImmutableArray.Create(identifier.SpanStart)));
             return arrayBuilder.ToImmutableArray();
         }
     }

@@ -15,6 +15,13 @@ namespace Microsoft.CodeAnalysis.Snippets
         public readonly string Identifier;
 
         /// <summary>
+        /// The number associated with each tab-stop.
+        /// Labels what order the cursor will be at after
+        /// tabbing through the snippet.
+        /// </summary>
+        public readonly int CursorIndex;
+
+        /// <summary>
         /// The positions associated with the identifier that will need to
         /// be converted into LSP formatted strings.
         /// </summary>
@@ -30,7 +37,7 @@ namespace Microsoft.CodeAnalysis.Snippets
         /// Identifier: length, 1 associated position <br/>
         /// </example>
         /// </summary>
-        public SnippetPlaceholder(string identifier, ImmutableArray<int> placeholderPositions)
+        public SnippetPlaceholder(string identifier, int cursorIndex, ImmutableArray<int> placeholderPositions)
         {
             if (identifier.Length == 0)
             {
@@ -38,7 +45,16 @@ namespace Microsoft.CodeAnalysis.Snippets
             }
 
             Identifier = identifier;
+            CursorIndex = cursorIndex;
             PlaceHolderPositions = placeholderPositions;
+        }
+
+        /// <summary>
+        /// Overload for tab-stops
+        /// </summary>
+        public SnippetPlaceholder(int cursorIndex, int tabStopPosition)
+            : this(identifier: " ", cursorIndex: cursorIndex, ImmutableArray.Create(tabStopPosition))
+        {
         }
     }
 }

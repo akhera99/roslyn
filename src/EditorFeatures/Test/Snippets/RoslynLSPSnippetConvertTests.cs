@@ -403,7 +403,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             var testString = "foo bar quux baz";
             using var workspace = CreateWorkspaceFromCode(testString);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
-            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, caretPosition: 12,
+            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, ImmutableArray.Create(new SnippetPlaceholder(0, 12)),
                 ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(8, 0), "quux"), triggerLocation: 12, CancellationToken.None).Result;
             AssertEx.EqualOrDiff("quux$0", lspSnippetString);
         }
@@ -414,7 +414,7 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             var testString = "foo bar quux baz";
             using var workspace = CreateWorkspaceFromCode(testString);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
-            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, caretPosition: 12,
+            var lspSnippetString = RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, ImmutableArray.Create(new SnippetPlaceholder(0, 12)),
                 ImmutableArray<SnippetPlaceholder>.Empty, new TextChange(new TextSpan(4, 4), "bar quux"), triggerLocation: 12, CancellationToken.None).Result;
             AssertEx.EqualOrDiff("bar quux$0", lspSnippetString);
         }
@@ -497,13 +497,15 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
             using var workspace = CreateWorkspaceFromCode(markup);
             var document = workspace.CurrentSolution.GetRequiredDocument(workspace.Documents.First().Id);
 
-            var lspSnippetString = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(document, cursorPosition!.Value, placeholders, textChange, stringSpan.Start, CancellationToken.None).ConfigureAwait(false);
+            var lspSnippetString = await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(
+                document, ImmutableArray.Create(new SnippetPlaceholder(0, cursorPosition!.Value)), placeholders, textChange, stringSpan.Start, CancellationToken.None).ConfigureAwait(false);
             AssertEx.EqualOrDiff(output, lspSnippetString);
         }
 
         private static ImmutableArray<SnippetPlaceholder> GetSnippetPlaceholders(string text, IDictionary<string, ImmutableArray<TextSpan>> placeholderDictionary)
         {
             using var _ = ArrayBuilder<SnippetPlaceholder>.GetInstance(out var arrayBuilder);
+            var i = 1;
             foreach (var kvp in placeholderDictionary)
             {
                 if (kvp.Key.Length > 0)
@@ -511,8 +513,10 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.Snippets
                     var spans = kvp.Value;
                     var identifier = text.Substring(spans[0].Start, spans[0].Length);
                     var placeholders = spans.Select(span => span.Start).ToImmutableArray();
-                    arrayBuilder.Add(new SnippetPlaceholder(identifier, placeholders));
+                    arrayBuilder.Add(new SnippetPlaceholder(identifier, i, placeholders));
                 }
+
+                i++;
             }
 
             return arrayBuilder.ToImmutable();

@@ -61,8 +61,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         {
             using var _ = ArrayBuilder<SnippetPlaceholder>.GetInstance(out var arrayBuilder);
             GetPartsOfForEachStatement(node, out var identifier, out var expression, out var _1);
-            arrayBuilder.Add(new SnippetPlaceholder(identifier.ToString(), ImmutableArray.Create(identifier.SpanStart)));
-            arrayBuilder.Add(new SnippetPlaceholder(expression.ToString(), ImmutableArray.Create(expression.SpanStart)));
+            arrayBuilder.Add(new SnippetPlaceholder(identifier.ToString(), cursorIndex: 1, ImmutableArray.Create(identifier.SpanStart)));
+            arrayBuilder.Add(new SnippetPlaceholder(expression.ToString(), cursorIndex: 2, ImmutableArray.Create(expression.SpanStart)));
 
             return arrayBuilder.ToImmutableArray();
 
@@ -106,7 +106,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         /// Gets the start of the BlockSyntax of the for statement
         /// to be able to insert the caret position at that location.
         /// </summary>
-        protected override int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
+        protected override ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
         {
             var foreachStatement = (ForEachStatementSyntax)caretTarget;
             var blockStatement = (BlockSyntax)foreachStatement.Statement;
@@ -114,7 +114,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
             var triviaSpan = blockStatement.CloseBraceToken.LeadingTrivia.Span;
             var line = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
             // Getting the location at the end of the line before the newline.
-            return line.Span.End;
+            return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: line.Span.End));
         }
 
         private static void GetPartsOfForEachStatement(SyntaxNode node, out SyntaxToken identifier, out SyntaxNode expression, out SyntaxNode statement)

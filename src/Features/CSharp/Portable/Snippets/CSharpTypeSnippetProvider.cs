@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,6 +17,7 @@ using Microsoft.CodeAnalysis.Indentation;
 using Microsoft.CodeAnalysis.LanguageService;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.Extensions.ContextQuery;
+using Microsoft.CodeAnalysis.Snippets;
 using Microsoft.CodeAnalysis.Snippets.SnippetProviders;
 using Microsoft.CodeAnalysis.Text;
 
@@ -50,13 +52,13 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
                     cancellationToken: cancellationToken);
         }
 
-        protected override int GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
+        protected override ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
         {
             var typeDeclaration = (TypeDeclarationSyntax)caretTarget;
             var triviaSpan = typeDeclaration.CloseBraceToken.LeadingTrivia.Span;
             var line = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
             // Getting the location at the end of the line before the newline.
-            return line.Span.End;
+            return ImmutableArray.Create(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: line.Span.End));
         }
 
         private static string GetIndentation(Document document, SyntaxNode node, SyntaxFormattingOptions syntaxFormattingOptions, CancellationToken cancellationToken)

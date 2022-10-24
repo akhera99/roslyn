@@ -20,9 +20,9 @@ namespace Microsoft.CodeAnalysis.Snippets
         public readonly ImmutableArray<TextChange> TextChanges;
 
         /// <summary>
-        /// The position that the cursor should end up on
+        /// The positions that the snippet will tab-stop through.
         /// </summary>
-        public readonly int CursorPosition;
+        public readonly ImmutableArray<SnippetPlaceholder> CursorPositions;
 
         /// <summary>
         /// The items that we will want to rename as well as the ordering
@@ -32,7 +32,7 @@ namespace Microsoft.CodeAnalysis.Snippets
 
         public SnippetChange(
             ImmutableArray<TextChange> textChanges,
-            int cursorPosition,
+            ImmutableArray<SnippetPlaceholder> cursorPositions,
             ImmutableArray<SnippetPlaceholder> placeholders)
         {
             if (textChanges.IsEmpty)
@@ -41,7 +41,7 @@ namespace Microsoft.CodeAnalysis.Snippets
             }
 
             TextChanges = textChanges;
-            CursorPosition = cursorPosition;
+            CursorPositions = cursorPositions;
             Placeholders = placeholders;
         }
     }

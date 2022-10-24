@@ -167,6 +167,7 @@ namespace Microsoft.CodeAnalysis.LanguageService
         int LockStatement { get; }
         int ReturnStatement { get; }
         int ThrowStatement { get; }
+        int TryStatement { get; }
         int UsingStatement { get; }
         int YieldReturnStatement { get; }
 
