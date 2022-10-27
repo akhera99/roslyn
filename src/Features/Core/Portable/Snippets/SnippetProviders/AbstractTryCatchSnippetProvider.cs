@@ -30,15 +30,6 @@ namespace Microsoft.CodeAnalysis.Snippets.SnippetProviders
             return syntaxContext.IsStatementContext || syntaxContext.IsGlobalStatementContext;
         }
 
-        protected override Task<ImmutableArray<TextChange>> GenerateSnippetTextChangesAsync(Document document, int position, CancellationToken cancellationToken)
-        {
-            var generator = SyntaxGenerator.GetGenerator(document);
-            var tryCatchStatement = generator.TryCatchStatement(tryStatements: Array.Empty<SyntaxNode>(),
-                generator.CatchClause(generator.IdentifierName("Exception"), identifier: "e", new[] { generator.ThrowStatement() }));
-            return Task.FromResult(ImmutableArray.Create(new TextChange(TextSpan.FromBounds(position, position),
-                tryCatchStatement.NormalizeWhitespace().ToFullString())));
-        }
-
         protected override Func<SyntaxNode?, bool> GetSnippetContainerFunction(ISyntaxFacts syntaxFacts)
         {
             return syntaxFacts.IsTryStatement;

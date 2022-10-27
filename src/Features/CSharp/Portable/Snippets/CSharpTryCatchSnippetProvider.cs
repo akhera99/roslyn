@@ -32,6 +32,22 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
         {
         }
 
+        protected override Task<ImmutableArray<TextChange>> GenerateSnippetTextChangesAsync(Document document, int position, CancellationToken cancellationToken)
+        {
+            var tryStatementString =
+@"try
+{
+    
+}
+catch (Exception e)
+{
+    
+    throw;
+}";
+            return Task.FromResult(ImmutableArray.Create(new TextChange(TextSpan.FromBounds(position, position),
+                tryStatementString)));
+        }
+
         protected override ImmutableArray<SnippetPlaceholder> GetTargetCaretPosition(ISyntaxFactsService syntaxFacts, SyntaxNode caretTarget, SourceText sourceText)
         {
             using var _ = ArrayBuilder<SnippetPlaceholder>.GetInstance(out var arrayBuilder);
@@ -39,7 +55,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
             var triviaSpan = catchStatement.Block.CloseBraceToken.LeadingTrivia.Span;
             var tryBodyLine = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
             arrayBuilder.Add(new SnippetPlaceholder(cursorIndex: 1, tabStopPosition: tryBodyLine.Span.End));
-            var catchBlockTriviaSpan = catchStatement.Catches.First().Block.Statements.First().GetTrailingTrivia().First().Span;
+            var catchBlockTriviaSpan = catchStatement.Catches.First().Block.Statements.First().GetLeadingTrivia().Span;
             var catchBodyLine = sourceText.Lines.GetLineFromPosition(catchBlockTriviaSpan.Start);
             arrayBuilder.Add(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: catchBodyLine.Span.End));
             return arrayBuilder.ToImmutableArray();
@@ -59,16 +75,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
             return arrayBuilder.ToImmutableArray();
         }
 
-        private static string GetIndentation(Document document, BlockSyntax block, SyntaxFormattingOptions syntaxFormattingOptions, CancellationToken cancellationToken)
+        private static async Task<string> GetIndentationAsync(Document document, BlockSyntax block, SyntaxFormattingOptions syntaxFormattingOptions, CancellationToken cancellationToken)
         {
-            var parsedDocument = ParsedDocument.CreateSynchronously(document, cancellationToken);
+            var parsedDocument = await ParsedDocument.CreateAsync(document, cancellationToken).ConfigureAwait(false);
             var openBraceLine = parsedDocument.Text.Lines.GetLineFromPosition(block.SpanStart).LineNumber;
 
             var indentationOptions = new IndentationOptions(syntaxFormattingOptions);
             var newLine = indentationOptions.FormattingOptions.NewLine;
 
             var indentationService = parsedDocument.LanguageServices.GetRequiredService<IIndentationService>();
-            var indentation = indentationService.GetIndentation(parsedDocument, openBraceLine + 1, indentationOptions, cancellationToken);
+            var indentation = indentationService.GetIndentation(parsedDocument, openBraceLine, indentationOptions, cancellationToken);
 
             // Adding the offset calculated with one tab so that it is indented once past the line containing the opening brace
             var newIndentation = new IndentationResult(indentation.BasePosition, indentation.Offset + syntaxFormattingOptions.TabSize);
@@ -77,22 +93,35 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
 
         protected override async Task<Document> AddIndentationToDocumentAsync(Document document, int position, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
         {
+            var syntaxFormattingOptions = await document.GetSyntaxFormattingOptionsAsync(fallbackOptions: null, cancellationToken).ConfigureAwait(false);
+            var tryBlockIndentedDocument = await AddIndentationToTryBlockHelperAsync(document, position, syntaxFacts, syntaxFormattingOptions, cancellationToken).ConfigureAwait(false);
+            var root = await tryBlockIndentedDocument.GetRequiredSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+
+            var snippet = root.GetAnnotatedNodes(_findSnippetAnnotation).FirstOrDefault();
+
+            var tryStatementSyntax = (TryStatementSyntax)snippet;
+
+            var catchBlock = tryStatementSyntax.Catches.First().Block;
+            var indentationStringForCatch = await GetIndentationAsync(tryBlockIndentedDocument, catchBlock, syntaxFormattingOptions, cancellationToken).ConfigureAwait(false);
+            var catchStatement = catchBlock.Statements.First();
+            catchStatement = catchStatement.WithPrependedLeadingTrivia(SyntaxFactory.SyntaxTrivia(SyntaxKind.WhitespaceTrivia, indentationStringForCatch));
+            var catchBlockIndentedTryStatement = tryStatementSyntax.ReplaceNode(catchBlock.Statements.First(), catchStatement);
+
+            var newRoot = root.ReplaceNode(tryStatementSyntax, catchBlockIndentedTryStatement);
+            return document.WithSyntaxRoot(newRoot);
+        }
+
+        private async Task<Document> AddIndentationToTryBlockHelperAsync(Document document, int position, ISyntaxFacts syntaxFacts, SyntaxFormattingOptions syntaxFormattingOptions, CancellationToken cancellationToken)
+        {
             var root = await document.GetRequiredSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var snippet = root.GetAnnotatedNodes(_findSnippetAnnotation).FirstOrDefault();
 
-            var syntaxFormattingOptions = await document.GetSyntaxFormattingOptionsAsync(fallbackOptions: null, cancellationToken).ConfigureAwait(false);
             var tryStatementSyntax = (TryStatementSyntax)snippet;
-            var indentationStringForTry = GetIndentation(document, tryStatementSyntax.Block, syntaxFormattingOptions, cancellationToken);
+            var indentationStringForTry = await GetIndentationAsync(document, tryStatementSyntax.Block, syntaxFormattingOptions, cancellationToken).ConfigureAwait(false);
 
             var tryBlock = tryStatementSyntax.Block;
             tryBlock = tryBlock.WithCloseBraceToken(tryBlock.CloseBraceToken.WithPrependedLeadingTrivia(SyntaxFactory.SyntaxTrivia(SyntaxKind.WhitespaceTrivia, indentationStringForTry)));
             var newTryStatementSyntax = tryStatementSyntax.ReplaceNode(tryStatementSyntax.Block, tryBlock);
-
-            var catchBlock = newTryStatementSyntax.Catches.First().Block;
-            var indentationStringForCatch = GetIndentation(document, catchBlock, syntaxFormattingOptions, cancellationToken);
-            catchBlock = catchBlock.WithOpenBraceToken(catchBlock.OpenBraceToken.WithAppendedTrailingTrivia(SyntaxFactory.SyntaxTrivia(SyntaxKind.WhitespaceTrivia, indentationStringForCatch)));
-            newTryStatementSyntax = newTryStatementSyntax.ReplaceNode(newTryStatementSyntax.Catches.First().Block, catchBlock);
-
             var newRoot = root.ReplaceNode(tryStatementSyntax, newTryStatementSyntax);
             return document.WithSyntaxRoot(newRoot);
         }

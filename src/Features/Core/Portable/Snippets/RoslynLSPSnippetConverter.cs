@@ -53,7 +53,7 @@ namespace Microsoft.CodeAnalysis.Snippets
             {
                 if (tabStopDictionary.TryGetValue(i, out var priority))
                 {
-                    lspSnippetString.Append($"${{{priority}}}");
+                    lspSnippetString.Append($"${priority}");
                 }
 
                 // Tries to see if a value exists at that position in the map, and if so it
