@@ -22,17 +22,14 @@ namespace Microsoft.CodeAnalysis.Snippets.SnippetProviders
 
         public override string SnippetDescription => FeaturesResources.try_catch;
 
+        protected override Func<SyntaxNode?, bool> GetSnippetContainerFunction(ISyntaxFacts syntaxFacts) => syntaxFacts.IsTryStatement;
+
         protected override async Task<bool> IsValidSnippetLocationAsync(Document document, int position, CancellationToken cancellationToken)
         {
             var semanticModel = await document.ReuseExistingSpeculativeModelAsync(position, cancellationToken).ConfigureAwait(false);
 
             var syntaxContext = document.GetRequiredLanguageService<ISyntaxContextService>().CreateContext(document, semanticModel, position, cancellationToken);
             return syntaxContext.IsStatementContext || syntaxContext.IsGlobalStatementContext;
-        }
-
-        protected override Func<SyntaxNode?, bool> GetSnippetContainerFunction(ISyntaxFacts syntaxFacts)
-        {
-            return syntaxFacts.IsTryStatement;
         }
     }
 }

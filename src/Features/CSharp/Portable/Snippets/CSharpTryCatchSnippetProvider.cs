@@ -52,9 +52,9 @@ catch (Exception e)
         {
             using var _ = ArrayBuilder<SnippetPlaceholder>.GetInstance(out var arrayBuilder);
             var catchStatement = (TryStatementSyntax)caretTarget;
-            var triviaSpan = catchStatement.Block.CloseBraceToken.LeadingTrivia.Span;
-            var tryBodyLine = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
-            arrayBuilder.Add(new SnippetPlaceholder(cursorIndex: 1, tabStopPosition: tryBodyLine.Span.End));
+            //var triviaSpan = catchStatement.Block.CloseBraceToken.LeadingTrivia.Span;
+            //var tryBodyLine = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
+            //arrayBuilder.Add(new SnippetPlaceholder(identifier: " ", cursorIndex: 1, placeholderPositions: ImmutableArray.Create(tryBodyLine.Span.End)));
             var catchBlockTriviaSpan = catchStatement.Catches.First().Block.Statements.First().GetLeadingTrivia().Span;
             var catchBodyLine = sourceText.Lines.GetLineFromPosition(catchBlockTriviaSpan.Start);
             arrayBuilder.Add(new SnippetPlaceholder(cursorIndex: 0, tabStopPosition: catchBodyLine.Span.End));
