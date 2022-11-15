@@ -24,18 +24,18 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
         private readonly Workspace _workspace;
         private readonly string _containingNamespaceName;
         private readonly string _containingTypeName;
-        private readonly INavigableLocation _navigableLocation;
+        private readonly SymbolKey _symbolId;
         private readonly IEnumerable<CallHierarchyDetail> _callsites;
         private readonly IEnumerable<AbstractCallFinder> _finders;
         private readonly Func<ImageSource> _glyphCreator;
         private readonly string _name;
         private readonly CallHierarchyProvider _provider;
         private readonly string _sortText;
+        private readonly ProjectId _projectId;
 
         public CallHierarchyItem(
             CallHierarchyProvider provider,
             ISymbol symbol,
-            INavigableLocation navigableLocation,
             IEnumerable<AbstractCallFinder> finders,
             Func<ImageSource> glyphCreator,
             ImmutableArray<Location> callsites,
@@ -43,7 +43,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
         {
             _workspace = project.Solution.Workspace;
             _provider = provider;
-            _navigableLocation = navigableLocation;
+            _symbolId = symbol.GetSymbolKey();
             _finders = finders;
             _containingTypeName = symbol.ContainingType.ToDisplayString(ContainingTypeFormat);
             _containingNamespaceName = symbol.ContainingNamespace.ToDisplayString(ContainingNamespaceFormat);
@@ -51,6 +51,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
             _name = symbol.ToDisplayString(MemberNameFormat);
             _callsites = callsites.SelectAsArray(loc => new CallHierarchyDetail(provider, loc, _workspace));
             _sortText = symbol.ToDisplayString();
+            _projectId = project.Id;
             ProjectName = project.Name;
         }
 
@@ -143,8 +144,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
         {
             using var context = _provider.ThreadOperationExecutor.BeginExecute(
                 ServicesVSResources.Call_Hierarchy, ServicesVSResources.Navigating, allowCancellation: true, showProgress: false);
-            await _navigableLocation.NavigateToAsync(
-                NavigationOptions.Default with { PreferProvisionalTab = true }, context.UserCancellationToken).ConfigureAwait(false);
+            await _provider.NavigateToAsync(_symbolId, _workspace.CurrentSolution.GetProject(_projectId), context.UserCancellationToken).ConfigureAwait(false);
         }
 
         public void StartSearch(string categoryName, CallHierarchySearchScope searchScope, ICallHierarchySearchCallback callback)

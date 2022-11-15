@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.GoToDefinition;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.Navigation;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.VisualStudio.Language.CallHierarchy;
@@ -32,7 +33,6 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
     {
         public readonly IAsynchronousOperationListener AsyncListener;
         public readonly IUIThreadOperationExecutor ThreadOperationExecutor;
-        private readonly Lazy<IStreamingFindUsagesPresenter> _streamingPresenter;
 
         public IThreadingContext ThreadingContext { get; }
         public IGlyphService GlyphService { get; }
@@ -43,14 +43,12 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
             IThreadingContext threadingContext,
             IUIThreadOperationExecutor threadOperationExecutor,
             IAsynchronousOperationListenerProvider listenerProvider,
-            IGlyphService glyphService,
-            Lazy<IStreamingFindUsagesPresenter> streamingPresenter)
+            IGlyphService glyphService)
         {
             AsyncListener = listenerProvider.GetListener(FeatureAttribute.CallHierarchy);
             ThreadingContext = threadingContext;
             ThreadOperationExecutor = threadOperationExecutor;
             this.GlyphService = glyphService;
-            _streamingPresenter = streamingPresenter;
         }
 
         public async Task<ICallHierarchyMemberItem> CreateItemAsync(
@@ -64,12 +62,9 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
                 symbol = GetTargetSymbol(symbol);
 
                 var finders = await CreateFindersAsync(symbol, project, cancellationToken).ConfigureAwait(false);
-                var location = await GoToDefinitionHelpers.GetDefinitionLocationAsync(
-                    symbol, project.Solution, this.ThreadingContext, _streamingPresenter.Value, cancellationToken).ConfigureAwait(false);
                 ICallHierarchyMemberItem item = new CallHierarchyItem(
                     this,
                     symbol,
-                    location,
                     finders,
                     () => symbol.GetGlyph().GetImageSource(GlyphService),
                     callsites,
@@ -147,6 +142,19 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.CallHierarchy
             }
 
             return null;
+        }
+
+        public async Task NavigateToAsync(SymbolKey id, Project project, CancellationToken cancellationToken)
+        {
+            var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
+            var resolution = id.Resolve(compilation, cancellationToken: cancellationToken);
+            var workspace = project.Solution.Workspace;
+            var options = NavigationOptions.Default with { PreferProvisionalTab = true };
+            var symbolNavigationService = workspace.Services.GetService<ISymbolNavigationService>();
+
+            var location = await symbolNavigationService.GetNavigableLocationAsync(
+                resolution.Symbol, project, cancellationToken).ConfigureAwait(false);
+            await location.TryNavigateToAsync(this.ThreadingContext, options, cancellationToken).ConfigureAwait(false);
         }
     }
 }
