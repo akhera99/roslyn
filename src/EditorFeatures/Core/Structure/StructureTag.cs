@@ -61,8 +61,16 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.Structure
         public bool IsDefaultCollapsed { get; }
         public bool IsImplementation { get; }
 
+        // Editor uses this here:
+        // https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_git/VS-Platform?path=/src/Editor/Text/Impl/Structure/StructureSpanningTree/StructureSpanningTree.cs&version=GBmain&line=308&lineEnd=309&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents
         public override int GetHashCode()
-            => throw ExceptionUtilities.Unreachable();
+            => Hash.Combine(this.GuideLineHorizontalAnchorPoint.GetHashCode(),
+               Hash.Combine(this.Type,
+               Hash.Combine(this.IsCollapsible,
+               Hash.Combine(this.IsDefaultCollapsed,
+               Hash.Combine(this.IsImplementation,
+               Hash.Combine(this.OutliningSpan.GetHashCode(),
+               Hash.Combine(this.HeaderSpan.GetHashCode(), this.GuideLineSpan.GetHashCode())))))));
 
         public override bool Equals(object? obj)
             => Equals(obj as StructureTag);

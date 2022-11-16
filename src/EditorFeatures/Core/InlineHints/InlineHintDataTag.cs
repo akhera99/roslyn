@@ -34,8 +34,10 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             Hint = hint;
         }
 
+        // Intentionally throwing, we have never supported this facility, and there is no contract around placing
+        // these tags in sets or maps.
         public override int GetHashCode()
-            => throw ExceptionUtilities.Unreachable();
+            => throw new NotImplementedException();
 
         public override bool Equals(object? obj)
             => obj is InlineHintDataTag tag && Equals(tag);
