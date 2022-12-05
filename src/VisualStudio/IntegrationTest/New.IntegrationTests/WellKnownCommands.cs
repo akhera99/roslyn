@@ -14,6 +14,7 @@ namespace Roslyn.VisualStudio.IntegrationTests
         {
             public static readonly CommandID GoToImplementation = new(Guids.RoslynGroupId, ID.RoslynCommands.GoToImplementation);
             public static readonly CommandID RemoveAndSort = new(VSConstants.CMDSETID.CSharpGroup_guid, 6419);
+            public static readonly CommandID ViewCallHierarchy = new(Guids.RoslynGroupId, ID.RoslynCommands.ViewCallHierarchy);
         }
     }
 }

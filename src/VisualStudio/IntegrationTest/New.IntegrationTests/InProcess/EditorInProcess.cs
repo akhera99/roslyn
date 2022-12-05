@@ -1012,6 +1012,14 @@ namespace Microsoft.VisualStudio.Extensibility.Testing
                 cancellationToken);
         }
 
+        public async Task ViewCallHierarchyAsync(CancellationToken cancellationToken)
+        {
+            await TestServices.Shell.ExecuteCommandAsync(VSConstants.VSStd2KCmdID.ViewCallHierarchy, cancellationToken);
+            await TestServices.Workspace.WaitForAllAsyncOperationsAsync(
+                new[] { FeatureAttribute.Workspace, FeatureAttribute.CallHierarchy, FeatureAttribute.NavigateTo },
+                cancellationToken);
+        }
+
         public async Task GoToBaseAsync(CancellationToken cancellationToken)
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
