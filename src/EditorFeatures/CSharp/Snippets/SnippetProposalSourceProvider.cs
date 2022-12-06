@@ -71,7 +71,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             _factory = factory;
         }
 
-        public override Task<ProposalCollectionBase?> RequestProposalsAsync(VirtualSnapshotPoint caret, CompletionState? completionState, ProposalScenario scenario, char triggeringCharacter, CancellationToken cancel)
+        public override async Task<ProposalCollectionBase?> RequestProposalsAsync(VirtualSnapshotPoint caret, CompletionState? completionState, ProposalScenario scenario, char triggeringCharacter, CancellationToken cancel)
         {
             /*if (scenario == ProposalScenario.CaretMove)
             {
@@ -105,6 +105,13 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
                 {
                     if (completionState.SelectedItem == s.Name)
                     {
+                        var snippetString = await GetSelectedSnippetAsync(s.Name, caret.Position, cancel).ConfigureAwait(false);
+                        if (snippetString is null)
+                        {
+                            break;
+                        }
+
+                        var snippet = new Snippet(s.Name, snippetString);
                         var proposal = Proposal.TryCreateProposal(description: $"Insert {s.Name} snippet",
                                                                   new[] { new ProposedEdit(new SnapshotSpan(caret.Position, 0), s.InsertionText, s.Fields) },
                                                                   caret,
@@ -120,10 +127,10 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
                     }
                 }
 
-                return Task.FromResult<ProposalCollectionBase?>(new ProposalCollection(nameof(SnippetProposalSourceProvider), proposals));
+                return new ProposalCollection(nameof(SnippetProposalSourceProvider), proposals);
             }
 
-            return Task.FromResult<ProposalCollectionBase?>(null);
+            return null;
         }
 
         private async Task<string?> GetSelectedSnippetAsync(string selectedSnippet, int position, CancellationToken cancellationToken)
@@ -138,6 +145,19 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             var snippetProvider = snippetService.GetSnippetProvider(selectedSnippet);
             var (document, invokePosition) = await GetDocumentWithoutInvokingTextAsync(openDocument, position, cancellationToken).ConfigureAwait(false);
             var snippet = await snippetProvider.GetSnippetAsync(document, invokePosition, cancellationToken).ConfigureAwait(false);
+            var strippedText = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+
+            var allChangesText = strippedText.WithChanges(snippet.TextChanges);
+
+            // This retrieves ALL text changes from the original document which includes the TextChanges from the snippet
+            // as well as the clean up.
+            var allChangesDocument = document.WithText(allChangesText);
+            var allTextChanges = await allChangesDocument.GetTextChangesAsync(document, cancellationToken).ConfigureAwait(false);
+
+            var change = Completion.Utilities.Collapse(allChangesText, allTextChanges.AsImmutable());
+
+            // Converts the snippet to an LSP formatted snippet string.
+            return  await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPosition, snippet.Placeholders, change, position, cancellationToken).ConfigureAwait(false);
 
 
         }
