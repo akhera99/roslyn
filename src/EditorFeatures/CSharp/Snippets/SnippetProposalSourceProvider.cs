@@ -9,8 +9,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.Shared.Extensions;
+using Microsoft.CodeAnalysis.Snippets;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Language.Proposals;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
@@ -44,7 +48,9 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
     [Obsolete]
     internal class SnippetProposalSource : ProposalSourceBase
     {
+        private readonly ITextView _textView;
         private readonly SnippetProposalSourceProvider _factory;
+
         private static readonly IReadOnlyList<Snippet> _snippets = new Snippet[]
             {
                 new Snippet("ctor", " \u2192 public Data($$)\r\n                {\r\n                }\r\n"),
@@ -61,6 +67,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
 
         private SnippetProposalSource(ITextView view, SnippetProposalSourceProvider factory)
         {
+            _textView = view;
             _factory = factory;
         }
 
@@ -117,6 +124,36 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             }
 
             return Task.FromResult<ProposalCollectionBase?>(null);
+        }
+
+        private async Task<string?> GetSelectedSnippetAsync(string selectedSnippet, int position, CancellationToken cancellationToken)
+        {
+            var openDocument = _textView.TextBuffer.AsTextContainer()?.GetOpenDocumentInCurrentContext();
+            if (openDocument is null)
+            {
+                return null;
+            }
+
+            var snippetService = openDocument.GetRequiredLanguageService<ISnippetService>();
+            var snippetProvider = snippetService.GetSnippetProvider(selectedSnippet);
+            var (document, invokePosition) = await GetDocumentWithoutInvokingTextAsync(openDocument, position, cancellationToken).ConfigureAwait(false);
+            var snippet = await snippetProvider.GetSnippetAsync(document, invokePosition, cancellationToken).ConfigureAwait(false);
+
+
+        }
+
+        private static async Task<(Document, int)> GetDocumentWithoutInvokingTextAsync(Document document, int position, CancellationToken cancellationToken)
+        {
+            var originalText = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+
+            // Uses the existing CompletionService logic to find the TextSpan we want to use for the document sans invoking text
+            var completionService = document.GetRequiredLanguageService<CompletionService>();
+            var span = completionService.GetDefaultCompletionListSpan(originalText, position);
+
+            var textChange = new TextChange(span, string.Empty);
+            originalText = originalText.WithChanges(textChange);
+            var newDocument = document.WithText(originalText);
+            return (newDocument, span.Start);
         }
 
         /*private static bool IsMatch(SnapshotPoint caret, string snippet, int lineStart)
