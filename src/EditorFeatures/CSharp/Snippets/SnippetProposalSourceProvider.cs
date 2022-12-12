@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text;
@@ -51,14 +52,10 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
         private readonly ITextView _textView;
         private readonly SnippetProposalSourceProvider _factory;
 
-        private static readonly IReadOnlyList<Snippet> _snippets = new Snippet[]
-            {
-                new Snippet("ctor", " \u2192 public Data($$)\r\n                {\r\n                }\r\n"),
-                new Snippet("for", " \u2192 for (int $i$ = 0; ($i$ < $length$); ++$i$)\r\n                {\r\n                }\r\n"),
-                new Snippet("foreach", " \u2192 foreach (var $item$ in $collection$)\r\n                {\r\n                }\r\n"),
-                new Snippet("forr", " \u2192 for (int $i$ = $length$-1; ($i$ >= 0); --$i$)\r\n                {\r\n                }\r\n"),
-                new Snippet("prop", " \u2192 public $int$ $MyProperty$ { get; set; }\r\n"),
-            };
+        private static readonly HashSet<string> snippetsWithProposals = new()
+        {
+            "class", "foreach", "if", "ctor", "interface", "prop", "struct", "while"
+        };
 
         internal static SnippetProposalSource GetOrCreate(ITextView view, SnippetProposalSourceProvider factory)
         {
@@ -73,47 +70,22 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
 
         public override async Task<ProposalCollectionBase?> RequestProposalsAsync(VirtualSnapshotPoint caret, CompletionState? completionState, ProposalScenario scenario, char triggeringCharacter, CancellationToken cancel)
         {
-            /*if (scenario == ProposalScenario.CaretMove)
-            {
-                if (!caret.IsInVirtualSpace)
-                {
-                    var line = caret.Position.GetContainingLine();
-                    var proposals = new List<ProposalBase>(1);
-                    foreach (var s in _snippets)
-                    {
-                        if (IsMatch(caret.Position, s.Name, line.Start.Position))
-                        {
-                            var proposal = Proposal.TryCreateProposal(description: $"Insert {s.Name} snippet",
-                                                                      new[] { new ProposedEdit(new SnapshotSpan(caret.Position, 0), s.InsertionText, s.Fields) },
-                                                                      caret,
-                                                                      completionState,
-                                                                      ProposalFlags.SingleTabToAccept,
-                                                                      commitAction: () => false);
-                            if (proposal != null)
-                                proposals.Add(proposal);
-                            break;
-                        }
-                    }
-
-                    return Task.FromResult<ProposalCollectionBase?>(new ProposalCollection(nameof(SnippetProposalSourceProvider), proposals));
-                }
-            }*/
             if ((completionState != null) && completionState.IsSnippet)
             {
                 var proposals = new List<ProposalBase>(1);
-                foreach (var s in _snippets)
+                foreach (var s in snippetsWithProposals)
                 {
-                    if (completionState.SelectedItem == s.Name)
+                    if (completionState.SelectedItem == s)
                     {
-                        var snippetString = await GetSelectedSnippetAsync(s.Name, caret.Position, cancel).ConfigureAwait(false);
-                        if (snippetString is null)
+                        var changes = await GetSelectedSnippetAsync(s, caret.Position, cancel).ConfigureAwait(false);
+                        if (changes is null)
                         {
                             break;
                         }
 
-                        var snippet = new Snippet(s.Name, snippetString);
-                        var proposal = Proposal.TryCreateProposal(description: $"Insert {s.Name} snippet",
-                                                                  new[] { new ProposedEdit(new SnapshotSpan(caret.Position, 0), s.InsertionText, s.Fields) },
+                        var snippet = new Snippet(s, changes.Value.change, changes.Value.snippet);
+                        var proposal = Proposal.TryCreateProposal(description: $"Insert {s} snippet",
+                                                                  new[] { new ProposedEdit(new SnapshotSpan(caret.Position, 0), snippet.InsertionText, snippet.Fields) },
                                                                   caret,
                                                                   completionState,
                                                                   ProposalFlags.SingleTabToAccept,
@@ -133,7 +105,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             return null;
         }
 
-        private async Task<string?> GetSelectedSnippetAsync(string selectedSnippet, int position, CancellationToken cancellationToken)
+        private async Task<(TextChange change, SnippetChange snippet)?> GetSelectedSnippetAsync(string selectedSnippet, int position, CancellationToken cancellationToken)
         {
             var openDocument = _textView.TextBuffer.AsTextContainer()?.GetOpenDocumentInCurrentContext();
             if (openDocument is null)
@@ -155,11 +127,7 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             var allTextChanges = await allChangesDocument.GetTextChangesAsync(document, cancellationToken).ConfigureAwait(false);
 
             var change = Completion.Utilities.Collapse(allChangesText, allTextChanges.AsImmutable());
-
-            // Converts the snippet to an LSP formatted snippet string.
-            return  await RoslynLSPSnippetConverter.GenerateLSPSnippetAsync(allChangesDocument, snippet.CursorPosition, snippet.Placeholders, change, position, cancellationToken).ConfigureAwait(false);
-
-
+            return (change, snippet);
         }
 
         private static async Task<(Document, int)> GetDocumentWithoutInvokingTextAsync(Document document, int position, CancellationToken cancellationToken)
@@ -176,76 +144,45 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.Snippets
             return (newDocument, span.Start);
         }
 
-        /*private static bool IsMatch(SnapshotPoint caret, string snippet, int lineStart)
-        {
-            if (caret.Position - lineStart > snippet.Length)
-            {
-                for (var i = 0; (i < snippet.Length); ++i)
-                {
-                    if (caret.Snapshot[caret.Position - snippet.Length + i] != snippet[i])
-                        return false;
-                }
-
-                return true;
-            }
-
-            return false;
-        }*/
-
         private class Snippet
         {
             public readonly string Name;
             public readonly string InsertionText;
             public readonly IReadOnlyList<Field> Fields;
 
-            public Snippet(string name, string insertionText)
+            public Snippet(string name, TextChange textChange, SnippetChange snippet)
             {
                 this.Name = name;
+                var textChangeStart = textChange.Span.Start;
+                var insertionText = textChange.NewText;
 
-                if (insertionText.Any(c => c == '$'))
+                var fields = new List<Field>();
+                var dictionary = new Dictionary<int, (string name, int id)>();
+                var placeholders = snippet.Placeholders;
+
+                PopulateMapOfSpanStartsToLSPStringItem(dictionary, placeholders, textChangeStart);
+
+                for (var i = 0; i < insertionText.Length; i++)
                 {
-                    var ids = new List<string>();
-                    var fields = new List<Field>();
-
-                    var builder = new StringBuilder(insertionText.Length);
-                    var start = -1;
-
-                    for (var i = 0; (i < insertionText.Length); ++i)
+                    if (dictionary.TryGetValue(i, out var placeholderInfo))
                     {
-                        if (insertionText[i] == '$')
-                        {
-                            if (start == -1)
-                            {
-                                start = builder.Length;
-                            }
-                            else
-                            {
-                                var span = Span.FromBounds(start, builder.Length);
-                                var id = insertionText.Substring(i - span.Length, span.Length);
-                                var index = ids.IndexOf(id);
-                                if ((index < 0) || (id.Length == 0))
-                                {
-                                    index = ids.Count;
-                                    ids.Add(id);
-                                }
-
-                                fields.Add(new Field(span, index));
-                                start = -1;
-                            }
-                        }
-                        else
-                        {
-                            builder.Append(insertionText[i]);
-                        }
+                        fields.Add(new Field(Span.FromBounds(i, i + placeholderInfo.name.Length), placeholderInfo.id));
                     }
-
-                    this.InsertionText = builder.ToString();
-                    this.Fields = fields;
                 }
-                else
+
+                this.Fields = fields;
+                this.InsertionText = insertionText;
+            }
+
+            private static void PopulateMapOfSpanStartsToLSPStringItem(Dictionary<int, (string name, int id)> dictionary, ImmutableArray<SnippetPlaceholder> placeholders, int textChangeStart)
+            {
+                for (var i = 0; i < placeholders.Length; i++)
                 {
-                    this.InsertionText = insertionText;
-                    this.Fields = Array.Empty<Field>();
+                    var placeholder = placeholders[i];
+                    foreach (var position in placeholder.PlaceHolderPositions)
+                    {
+                        dictionary.Add(position - textChangeStart, (placeholder.Identifier, i));
+                    }
                 }
             }
         }

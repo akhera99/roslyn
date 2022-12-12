@@ -28,6 +28,12 @@ namespace Microsoft.CodeAnalysis.Snippets
             return ConvertToLSPSnippetString(extendedTextChange, placeholders, caretPosition);
         }
 
+        /*public static async Task<string> GenerateProposalSnippetAsync(Document document, int caretPosition, ImmutableArray<SnippetPlaceholder> placeholders, TextChange textChange, int triggerLocation, CancellationToken cancellationToken)
+        {
+            var extendedTextChange = await ExtendSnippetTextChangeAsync(document, textChange, placeholders, caretPosition, triggerLocation, cancellationToken).ConfigureAwait(false);
+            return Convert
+        }*/
+
         /// <summary>
         /// Iterates through every index in the snippet string and determines where the
         /// LSP formatted chunks should be inserted for each placeholder.
