@@ -11,6 +11,7 @@ using Roslyn.VisualStudio.IntegrationTests;
 using WindowsInput.Native;
 using Xunit;
 using Microsoft.VisualStudio.Shell.TableManager;
+using static Microsoft.VisualStudio.VSConstants;
 
 namespace Roslyn.VisualStudio.NewIntegrationTests.CSharp
 {
@@ -45,8 +46,7 @@ class SomeOtherClass
 }
 ", HangMitigatingCancellationToken);
 
-            await TestServices.Input.SendAsync((VirtualKeyCode.CONTROL, VirtualKeyCode.VK_K), HangMitigatingCancellationToken);
-            await TestServices.Input.SendAsync((VirtualKeyCode.CONTROL, VirtualKeyCode.VK_T), HangMitigatingCancellationToken);
+            await TestServices.Shell.ExecuteCommandAsync(VSStd2KCmdID.ViewCallHierarchy, HangMitigatingCancellationToken);
 
             var results = await TestServices.CallHierarchyWindow.GetContentsAsync(HangMitigatingCancellationToken);
 

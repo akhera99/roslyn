@@ -21,7 +21,7 @@ namespace Roslyn.VisualStudio.NewIntegrationTests.InProcess
     [TestService]
     internal partial class CallHierarchyWindowInProcess
     {
-        internal static readonly Guid ViewCallHierarchyGuid = new("{68487888-204A-11D3-87EB-00C04F7971A5}");
+        internal static readonly Guid ViewCallHierarchyGuid = new("{3822E751-EB69-4b0e-B301-595A9E4C74D5}");
 
         public async Task<ImmutableArray<ITableEntryHandle2>> GetContentsAsync(CancellationToken cancellationToken)
         {
@@ -68,7 +68,7 @@ namespace Roslyn.VisualStudio.NewIntegrationTests.InProcess
 
             // Dig through to get the Find References control.
             var toolWindowType = toolWindow.GetType();
-            var toolWindowControlField = toolWindowType.GetField("Control");
+            var toolWindowControlField = toolWindowType.GetFields()[0];
             var toolWindowControl = toolWindowControlField.GetValue(toolWindow);
 
             // Dig further to get the results table (as opposed to the toolbar).
