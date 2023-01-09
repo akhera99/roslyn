@@ -8,6 +8,7 @@
     xmlns:vs="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
     xmlns:imaging="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.Imaging"
     xmlns:imagecatalog="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.ImageCatalog"
+    xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
     Width="600"
     MinWidth="600"
     SizeToContent="Height"
@@ -16,23 +17,29 @@
     ResizeMode="CanResizeWithGrip"
     ShowInTaskbar="False"
     HasDialogFrame="True"
-    WindowStartupLocation="CenterOwner">
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource {x:Static vs:ThemedDialogColors.WindowPanelBrushKey}}">
     <Window.Resources>
-        <Thickness x:Key="okCancelButtonPadding">9,2,9,2</Thickness>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../VSThemeDictionary.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Thickness x:Key="okCancelButtonPadding">9,2,9,2</Thickness>
+        </ResourceDictionary>
     </Window.Resources>
-    <Grid Name="ContentGrid" Margin="11,6,11,11">
+    <Grid Name="ContentGrid" Margin="11,6,11,11" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Grid Grid.Row="0" Name="Table">
+        <Grid Grid.Row="0" Name="Table" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <GroupBox Grid.Row="0" Header="{Binding ElementName=dialog, Path=ParameterInformation}" Margin="3">
-                <Grid Margin="5">
+            <GroupBox Grid.Row="0" Header="{Binding ElementName=dialog, Path=ParameterInformation}" Margin="3" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
+                <Grid Margin="5" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -70,7 +77,7 @@
                          GroupName="ParameterKind" 
                          IsChecked="{Binding IsRequired, Mode=TwoWay}" 
                          Content="{Binding ElementName=dialog, Path=Required}" />
-                    <Grid Margin="5">
+                    <Grid Margin="5" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -93,7 +100,7 @@
             <GroupBox Grid.Row="2" Header="{Binding ElementName=dialog, Path=ValueToInjectAtCallsites}" Margin="3">
                 <StackPanel Orientation="Vertical" Margin="0,0,0,9">
                     <Label Grid.Column="0" Margin="0,0,0,0" Grid.ColumnSpan="2" />
-                    <Grid Margin="5,1,5,5">
+                    <Grid Margin="5,1,5,5" Background="{DynamicResource {x:Static vsui:HeaderColors.DefaultBrushKey}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
