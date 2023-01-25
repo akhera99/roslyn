@@ -32,6 +32,20 @@ namespace Microsoft.CodeAnalysis.ExternalAccess.FSharp.InlineHints
             _getDescriptionAsync = getDescriptionAsync;
         }
 
+        public FSharpInlineHint(
+            TextSpan span,
+            ImmutableArray<TaggedText> displayParts,
+            PositionAffinity
+            Func<Document, CancellationToken, Task<ImmutableArray<TaggedText>>>? getDescriptionAsync = null)
+        {
+            if (displayParts.Length == 0)
+                throw new ArgumentException($"{nameof(displayParts)} must be non-empty");
+
+            Span = span;
+            DisplayParts = displayParts;
+            _getDescriptionAsync = getDescriptionAsync;
+        }
+
         /// <summary>
         /// Gets a description for the inline hint, suitable to show when a user hovers over the editor adornment.  The
         /// <paramref name="document"/> will represent the file at the time this hint was created.
