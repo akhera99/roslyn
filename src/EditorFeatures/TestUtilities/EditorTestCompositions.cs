@@ -4,6 +4,7 @@
 
 using System.Reflection;
 using Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Interactive;
+using Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.AsyncCompletion;
 using Microsoft.CodeAnalysis.Editor.Implementation.Notification;
 using Microsoft.CodeAnalysis.Editor.UnitTests.Utilities;
 using Microsoft.CodeAnalysis.LanguageServer;
@@ -68,7 +69,11 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests
 
         public static readonly TestComposition EditorFeaturesWpf = EditorFeatures
             .AddAssemblies(
-                typeof(EditorFeaturesWpfResources).Assembly);
+                typeof(EditorFeaturesWpfResources).Assembly,
+                typeof(LanguageServerSnippetExpanderAdapter).Assembly,
+                typeof(ILanguageServerSnippetExpander).Assembly,
+                Assembly.LoadFrom("Microsoft.VisualStudio.LanguageServer.Client.Implementation.dll"))
+                .AddParts(Assembly.LoadFrom("Microsoft.VisualStudio.Editor.Implementation.dll").GetType("Microsoft.VisualStudio.Editor.Implementation.VsEditorAdaptersFactoryService"));
 
         public static readonly TestComposition InteractiveWindow = EditorFeaturesWpf
             .AddAssemblies(
