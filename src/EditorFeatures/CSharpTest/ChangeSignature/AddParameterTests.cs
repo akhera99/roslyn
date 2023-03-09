@@ -1359,5 +1359,44 @@ struct R(int First, int Third, int Second, int Forth)
 
             await TestChangeSignatureViaCommandAsync(LanguageNames.CSharp, markup, updatedSignature: updatedSignature, expectedUpdatedInvocationDocumentCode: updatedCode);
         }
+
+        [Fact]
+        public async Task AddParameters_PrimaryConstructor_ClassBase()
+        {
+            var markup = """
+                class $$C1(int p1);
+
+                class C2(S1 a10000, string a30000, int a20000) : C1(a10000.F1)
+                {
+                }
+
+                class S1
+                {
+                    public int F1;
+                }
+                """;
+
+            var updatedSignature = new AddedParameterOrExistingIndex[]
+            {
+                new(0),
+                new(new AddedParameter(null, "int", "testNum", CallSiteKind.Value, "0"), "System.Int32")
+            };
+
+            var updatedCode = """
+                class C1(int p1, int testNum);
+                
+                class C2(S1 a10000, string a30000, int a20000) : C1(a10000.F1, 0)
+                {
+                }
+                
+                class S1
+                {
+                    public int F1;
+                }
+                """;
+
+            await TestChangeSignatureViaCommandAsync(LanguageNames.CSharp, markup, updatedSignature: updatedSignature, expectedUpdatedInvocationDocumentCode: updatedCode);
+
+        }
     }
 }
