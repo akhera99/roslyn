@@ -20,29 +20,25 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
     [Export(typeof(IKeyProcessorProvider))]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
     [ContentType(ContentTypeNames.RoslynContentType)]
+    [Export(typeof(InlineHintsKeyProcessorProvider))]
     [Name(nameof(InlineHintsKeyProcessorProvider))]
     internal sealed class InlineHintsKeyProcessorProvider : IKeyProcessorProvider
     {
-        private readonly IGlobalOptionService _globalOptions;
-
         [ImportingConstructor]
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
-        public InlineHintsKeyProcessorProvider(IGlobalOptionService globalOptions)
+        public InlineHintsKeyProcessorProvider()
         {
-            _globalOptions = globalOptions;
         }
 
         public KeyProcessor GetAssociatedProcessor(IWpfTextView wpfTextView)
-            => new InlineHintsKeyProcessor(_globalOptions, wpfTextView);
+            => new InlineHintsKeyProcessor(wpfTextView);
 
         private sealed class InlineHintsKeyProcessor : KeyProcessor
         {
-            private readonly IGlobalOptionService _globalOptions;
             private readonly IWpfTextView _view;
 
-            public InlineHintsKeyProcessor(IGlobalOptionService globalOptions, IWpfTextView view)
+            public InlineHintsKeyProcessor(IWpfTextView view)
             {
-                _globalOptions = globalOptions;
                 _view = view;
                 _view.Closed += OnViewClosed;
                 _view.LostAggregateFocus += OnLostFocus;
