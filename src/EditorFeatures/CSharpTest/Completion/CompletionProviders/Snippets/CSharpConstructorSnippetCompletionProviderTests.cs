@@ -168,5 +168,33 @@ $$";
 }";
             await VerifyCustomCommitProviderAsync(markupBeforeCommit, ItemToCommit, expectedCodeAfterCommit);
         }
+
+        [WpfFact, Trait(Traits.Feature, Traits.Features.Completion)]
+        public async Task InsertConstructorSnippetInNestedClassTopLevelTest()
+        {
+            var markupBeforeCommit =
+@"class MyClass
+{
+    $$
+
+    class MyClass1
+    {
+    }
+}";
+
+            var expectedCodeAfterCommit =
+@"class MyClass
+{
+    public MyClass()
+    {
+        $$
+    }
+
+    class MyClass1
+    {
+    }
+}";
+            await VerifyCustomCommitProviderAsync(markupBeforeCommit, ItemToCommit, expectedCodeAfterCommit);
+        }
     }
 }

@@ -32,7 +32,21 @@ namespace Microsoft.CodeAnalysis.Snippets.SnippetProviders
             var syntaxFacts = document.GetRequiredLanguageService<ISyntaxFactsService>();
             var root = await document.GetRequiredSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var nodeAtPosition = root.FindNode(TextSpan.FromBounds(position, position));
-            var containingType = nodeAtPosition.FirstAncestorOrSelf<SyntaxNode>(syntaxFacts.IsTypeDeclaration);
+            var containingType = nodeAtPosition.FirstAncestorOrSelf<SyntaxNode>(
+                node => syntaxFacts.IsClassDeclaration(node) || syntaxFacts.IsStructDeclaration(node));
+
+            if (containingType is not null && containingType.Equals(nodeAtPosition))
+            {
+                if (containingType.FirstAncestorOrSelf<SyntaxNode>(node =>
+                syntaxFacts.IsTypeDeclaration(node) && !node.Equals(containingType)) is SyntaxNode outerType)
+                {
+                    if (outerType.Span.Contains(position) && !containingType.Span.Contains(position))
+                    {
+                        containingType = outerType;
+                    }
+                }
+            }
+
             Contract.ThrowIfNull(containingType);
             var constructorDeclaration = generator.ConstructorDeclaration(
                 containingTypeName: syntaxFacts.GetIdentifierOfTypeDeclaration(containingType).ToString(),
