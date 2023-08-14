@@ -64,7 +64,7 @@ namespace Microsoft.CodeAnalysis.LanguageServer.Handler
             var formattingOptions = await ProtocolConversions.GetFormattingOptionsAsync(request.Options, document, _globalOptions, cancellationToken).ConfigureAwait(false);
 
             // The editor calls this handler for C# and VB comment characters, but we only need to process the one for the language that matches the document
-            if (request.Character == "\n" || request.Character == service.DocumentationCommentCharacter)
+            if (request.Character.Contains("\n") || request.Character == service.DocumentationCommentCharacter)
             {
                 var docCommentOptions = _globalOptions.GetDocumentationCommentOptions(formattingOptions.LineFormatting, document.Project.Language);
 
@@ -111,7 +111,7 @@ namespace Microsoft.CodeAnalysis.LanguageServer.Handler
             var linePosition = ProtocolConversions.PositionToLinePosition(autoInsertParams.Position);
             var position = sourceText.Lines.GetPosition(linePosition);
 
-            var result = autoInsertParams.Character == "\n"
+            var result = autoInsertParams.Character.Contains("\n")
                 ? service.GetDocumentationCommentSnippetOnEnterTyped(syntaxTree, sourceText, position, options, cancellationToken)
                 : service.GetDocumentationCommentSnippetOnCharacterTyped(syntaxTree, sourceText, position, options, cancellationToken, addIndentation: false);
 

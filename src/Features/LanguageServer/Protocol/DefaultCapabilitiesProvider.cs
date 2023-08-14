@@ -115,7 +115,7 @@ namespace Microsoft.CodeAnalysis.LanguageServer
             };
 
             // Using VS server capabilities because we have our own custom client.
-            capabilities.OnAutoInsertProvider = new VSInternalDocumentOnAutoInsertOptions { TriggerCharacters = new[] { "'", "/", "\n" } };
+            capabilities.OnAutoInsertProvider = new VSInternalDocumentOnAutoInsertOptions { TriggerCharacters = new[] { "'", "/", "\n"} };
 
             if (!supportsVsExtensions)
             {
