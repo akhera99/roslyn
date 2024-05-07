@@ -20,8 +20,10 @@ using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.PlatformUI;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Threading;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Editor.QuickInfo;
@@ -36,10 +38,12 @@ internal sealed partial class OnTheFlyDocsView : UserControl, INotifyPropertyCha
     private readonly IAsynchronousOperationListener _asyncListener;
     private readonly IAsyncQuickInfoSession _asyncQuickInfoSession;
     private readonly IThreadingContext _threadingContext;
+    private readonly JoinableTaskFactory _joinableTaskFactory;
     private readonly Document _document;
     private readonly OnTheFlyDocsElement _onTheFlyDocsElement;
     private readonly ContentControl _responseControl = new();
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly Action? _triggerOnTheFlyDocsLink;
 
     private OnTheFlyDocsState _currentState = OnTheFlyDocsState.OnDemandLink;
 
@@ -65,6 +69,7 @@ internal sealed partial class OnTheFlyDocsView : UserControl, INotifyPropertyCha
         _asyncListener = listenerProvider.GetListener(FeatureAttribute.OnTheFlyDocs);
         _asyncQuickInfoSession = asyncQuickInfoSession;
         _threadingContext = threadingContext;
+        _joinableTaskFactory = threadingContext.JoinableTaskFactory;
         _onTheFlyDocsElement = editorFeaturesOnTheFlyDocsElement.OnTheFlyDocsElement;
         _document = editorFeaturesOnTheFlyDocsElement.Document;
 
@@ -118,6 +123,7 @@ internal sealed partial class OnTheFlyDocsView : UserControl, INotifyPropertyCha
 
         ResultsRequested += (_, _) => PopulateAIDocumentationElements(_cancellationTokenSource.Token);
         _asyncQuickInfoSession.StateChanged += (_, _) => OnQuickInfoSessionChanged();
+        _triggerOnTheFlyDocsLink = () => RequestResults();
         InitializeComponent();
     }
 
@@ -186,6 +192,20 @@ internal sealed partial class OnTheFlyDocsView : UserControl, INotifyPropertyCha
         {
             _cancellationTokenSource.Cancel();
         }
+    }
+
+    public void RequestOnTheFlyDocs()
+    {
+        if (_triggerOnTheFlyDocsLink is null)
+        {
+            return;
+        }
+
+        _joinableTaskFactory.RunAsync(async () =>
+        {
+            await _joinableTaskFactory.SwitchToMainThreadAsync();
+            _triggerOnTheFlyDocsLink?.Invoke();
+        });
     }
 
     public OnTheFlyDocsState CurrentState

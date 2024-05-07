@@ -51,7 +51,7 @@ internal sealed class OnTheFlyDocsViewFactory : IViewElementFactory
         }
 
         var editorFeaturesOnTheFlyDocsElement = (EditorFeaturesOnTheFlyDocsElement)model;
-
+        textView.Properties.GetOrCreateSingletonProperty()
         Logger.Log(FunctionId.Copilot_On_The_Fly_Docs_Showed_Link, KeyValueLogMessage.Create(m =>
         {
             m["SymbolHeaderText"] = editorFeaturesOnTheFlyDocsElement.OnTheFlyDocsElement.SymbolSignature;
