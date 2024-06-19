@@ -7,7 +7,6 @@ using System.Composition;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Copilot;
-using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.Internal.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Settings;
@@ -40,9 +39,11 @@ internal sealed class CSharpVisualStudioCopilotOptionsService : ICopilotOptionsS
     private const string GitHubAccountStatusIsCopilotEntitled = "3DE3FA6E-91B2-46C1-9E9E-DD04975BB890";
 
     private const string CopilotOptionNamePrefix = "Microsoft.VisualStudio.Conversations";
+    private const string CopilotFeatureFlagNamePrefix = "VS.Copilot";
     private const string CopilotCodeAnalysisOptionName = "EnableCSharpCodeAnalysis";
     private const string CopilotRefineOptionName = "EnableCSharpRefineQuickActionSuggestion";
     private const string CopilotOnTheFlyDocsOptionName = "EnableCSharpOnTheFlyDocs";
+    private const string CopilotOnTheFlyDocsFeatureFlagName = "CSharpOnTheFlyDocs";
 
     private static readonly UIContext s_copilotHasLoadedUIContext = UIContext.FromUIContextGuid(new Guid(CopilotHasLoadedGuid));
     private static readonly UIContext s_gitHubAccountStatusDeterminedContext = UIContext.FromUIContextGuid(new Guid(GitHubAccountStatusDetermined));
@@ -50,6 +51,7 @@ internal sealed class CSharpVisualStudioCopilotOptionsService : ICopilotOptionsS
     private static readonly UIContext s_gitHubAccountStatusSignedInUIContext = UIContext.FromUIContextGuid(new Guid(GitHubAccountStatusSignedIn));
 
     private readonly Task<ISettingsManager> _settingsManagerTask;
+    private readonly Task<IVsFeatureFlags> _featureFlagsService;
 
     /// <summary>
     /// Determines if Copilot is active and the user is signed in and entitled to use Copilot.
@@ -64,20 +66,30 @@ internal sealed class CSharpVisualStudioCopilotOptionsService : ICopilotOptionsS
     [method: Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
     public CSharpVisualStudioCopilotOptionsService(
         IVsService<SVsSettingsPersistenceManager, ISettingsManager> settingsManagerService,
+        IVsService<SVsFeatureFlags, IVsFeatureFlags> featureFlagsService,
         IThreadingContext threadingContext)
     {
         _settingsManagerTask = settingsManagerService.GetValueAsync(threadingContext.DisposalToken);
+        _featureFlagsService = featureFlagsService.GetValueAsync(threadingContext.DisposalToken);
     }
 
-    public async Task<bool> IsCopilotOptionEnabledAsync(string optionName)
+    public async Task<bool> IsCopilotOptionEnabledAsync(string optionName, string? featureFlagName = null)
     {
         if (!IsGithubCopilotLoadedAndSignedIn)
             return false;
 
         var settingManager = await _settingsManagerTask.ConfigureAwait(false);
+        var featureFlags = await _featureFlagsService.ConfigureAwait(false);
         // The bool setting is persisted as 0=None, 1=True, 2=False, so it needs to be retrieved as an int.
-        return settingManager.TryGetValue($"{CopilotOptionNamePrefix}.{optionName}", out int isEnabled) == GetValueResult.Success
-            && isEnabled == 1;
+        var settingEnabled = settingManager.TryGetValue($"{CopilotOptionNamePrefix}.{optionName}", out int isEnabled) == GetValueResult.Success;
+
+        settingEnabled = settingEnabled && isEnabled == 1;
+        if (featureFlagName is not null)
+        {
+            var featureFlagEnabled = featureFlags.IsFeatureEnabled($"{CopilotFeatureFlagNamePrefix}.{featureFlagName}", defaultValue: false);
+        }
+
+        return settingEnabled;
     }
 
     public Task<bool> IsCodeAnalysisOptionEnabledAsync()
@@ -87,5 +99,5 @@ internal sealed class CSharpVisualStudioCopilotOptionsService : ICopilotOptionsS
         => IsCopilotOptionEnabledAsync(CopilotRefineOptionName);
 
     public Task<bool> IsOnTheFlyDocsOptionEnabledAsync()
-        => IsCopilotOptionEnabledAsync(CopilotOnTheFlyDocsOptionName);
+        => IsCopilotOptionEnabledAsync(CopilotOnTheFlyDocsOptionName, CopilotOnTheFlyDocsFeatureFlagName);
 }
