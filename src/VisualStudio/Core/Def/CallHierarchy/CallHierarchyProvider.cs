@@ -17,6 +17,8 @@ using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.GoToDefinition;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.LanguageService;
+using Microsoft.CodeAnalysis.Navigation;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.VisualStudio.Language.CallHierarchy;
@@ -65,6 +67,12 @@ internal partial class CallHierarchyProvider
             var finders = await CreateFindersAsync(symbol, project, cancellationToken).ConfigureAwait(false);
             var location = await GoToDefinitionHelpers.GetDefinitionLocationAsync(
                 symbol, project.Solution, this.ThreadingContext, _streamingPresenter.Value, cancellationToken).ConfigureAwait(false);
+
+            if (await IsInNameOfExpression(symbol, project, location, cancellationToken).ConfigureAwait(false))
+            {
+                return null;
+            }
+
             ICallHierarchyMemberItem item = new CallHierarchyItem(
                 this,
                 symbol,
@@ -90,6 +98,13 @@ internal partial class CallHierarchyProvider
         }
 
         return symbol;
+    }
+
+    private Task<bool> IsInNameOfExpression(ISymbol symbol, Project project, INavigableLocation location, CancellationToken cancellationToken)
+    {
+        var semanticFactsService = project.Services.GetService<ISemanticFactsService>();
+        location.
+        if (semanticFactsService.IsInsideNameOfExpression()
     }
 
     public FieldInitializerItem CreateInitializerItem(IEnumerable<CallHierarchyDetail> details)
