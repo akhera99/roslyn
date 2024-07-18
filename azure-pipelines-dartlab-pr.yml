@@ -1,0 +1,12 @@
+# Make sure the pipeline doesn't build on commits.
+trigger: none
+
+# Make sure the pipeline doesn't run on main
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- powershell: eng/build-dartlab.ps1 -branch '$(Build.SourceBranch)'
+  displayName: 'Trigger DartLab pipeline on PR'
