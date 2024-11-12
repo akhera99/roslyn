@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.RelatedDocuments;
 using Microsoft.CodeAnalysis.Shared.Extensions;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.CodeAnalysis.CSharp.RelatedDocuments;
 
@@ -21,9 +22,10 @@ internal sealed class CSharpRelatedDocumentsService() : AbstractRelatedDocuments
     ExpressionSyntax,
     NameSyntax>
 {
-    protected override IEnumerable<(ExpressionSyntax expression, SyntaxToken nameToken)> IteratePotentialTypeNodes(SyntaxNode root)
+    protected override IEnumerable<(ExpressionSyntax expression, SyntaxToken nameToken)> IteratePotentialTypeNodes(SyntaxNode root, int position)
     {
         using var _ = ArrayBuilder<SyntaxNode>.GetInstance(out var stack);
+        root = root.FindNode(TextSpan.FromBounds(position, position));
         stack.Push(root);
 
         while (stack.TryPop(out var current))

@@ -31,7 +31,7 @@ internal abstract class AbstractRelatedDocumentsService<
             => s_pool.GetPooledObject(out set);
     }
 
-    protected abstract IEnumerable<(TExpressionSyntax expression, SyntaxToken nameToken)> IteratePotentialTypeNodes(SyntaxNode root);
+    protected abstract IEnumerable<(TExpressionSyntax expression, SyntaxToken nameToken)> IteratePotentialTypeNodes(SyntaxNode root, int position);
 
     public async ValueTask GetRelatedDocumentIdsAsync(
         Document document, int position, Func<ImmutableArray<DocumentId>, CancellationToken, ValueTask> callbackAsync, CancellationToken cancellationToken)
@@ -94,7 +94,7 @@ internal abstract class AbstractRelatedDocumentsService<
         // results to whatever client is calling into us.
         await ProducerConsumer<DocumentId>.RunParallelAsync(
             // Order the nodes by the distance from the requested position.
-            IteratePotentialTypeNodes(root).OrderBy(t => Math.Abs(t.expression.SpanStart - position)),
+            IteratePotentialTypeNodes(root, position).OrderBy(t => Math.Abs(t.expression.SpanStart - position)),
             produceItems: (tuple, callback, _, cancellationToken) =>
             {
                 ProduceItems(tuple.expression, tuple.nameToken, callback, cancellationToken);
