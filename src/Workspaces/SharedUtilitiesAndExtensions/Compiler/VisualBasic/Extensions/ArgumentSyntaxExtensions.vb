@@ -40,10 +40,22 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.Extensions
                 Return Nothing
             End If
 
+            Dim assignedParameters = New HashSet(Of IParameterSymbol)()
+
             For Each symbol In symbols
                 Dim parameters = symbol.GetParameters()
 
-                ' Handle named argument
+                For Each currentArgument In argumentList.Arguments
+                    If currentArgument.IsNamed Then
+                        Dim namedArgument = DirectCast(currentArgument, SimpleArgumentSyntax)
+                        Dim name = namedArgument.NameColonEquals.Name.Identifier.ValueText
+                        Dim parameter = parameters.FirstOrDefault(Function(p) p.Name = name)
+                        If parameter IsNot Nothing Then
+                            assignedParameters.Add(parameter)
+                        End If
+                    End If
+                Next
+
                 If argument.IsNamed Then
                     Dim namedArgument = DirectCast(argument, SimpleArgumentSyntax)
                     Dim name = namedArgument.NameColonEquals.Name.Identifier.ValueText
@@ -51,8 +63,6 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.Extensions
                     If parameter IsNot Nothing Then
                         Return parameter
                     End If
-
-                    Continue For
                 End If
 
                 ' Handle positional argument
@@ -62,6 +72,10 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.Extensions
                 End If
 
                 If index < parameters.Length Then
+                    If assignedParameters.Contains(parameters(index)) Then
+                        Continue For
+                    End If
+
                     Return parameters(index)
                 End If
 

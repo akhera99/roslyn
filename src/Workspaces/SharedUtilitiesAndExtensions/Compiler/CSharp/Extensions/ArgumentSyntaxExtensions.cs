@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -55,9 +56,26 @@ internal static class ArgumentSyntaxExtensions
         if (symbols.Length >= 2 && !allowUncertainCandidates)
             return null;
 
+        var assignedParameters = new HashSet<IParameterSymbol>();
+
         foreach (var symbol in symbols)
         {
             var parameters = symbol.GetParameters();
+
+            // Handles the case where, in an argument list greater than the number of parameters,
+            // a named argument maps back to the parameter and not the argument in the spot in the argument list.
+            foreach (var currentArgument in argumentList.Arguments)
+            {
+                if (currentArgument.NameColon != null && !currentArgument.NameColon.IsMissing)
+                {
+                    var name = currentArgument.NameColon.Name.Identifier.ValueText;
+                    var parameter = parameters.FirstOrDefault(p => p.Name == name);
+                    if (parameter != null)
+                    {
+                        assignedParameters.Add(parameter);
+                    }
+                }
+            }
 
             // Handle named argument
             if (argument.NameColon != null && !argument.NameColon.IsMissing)
@@ -78,6 +96,11 @@ internal static class ArgumentSyntaxExtensions
             if (index < parameters.Length)
             {
                 var parameter = parameters[index];
+                if (assignedParameters.Contains(parameter))
+                {
+                    continue;
+                }
+
                 if (argument.RefOrOutKeyword.Kind() == SyntaxKind.OutKeyword &&
                     parameter.RefKind != RefKind.Out)
                 {
