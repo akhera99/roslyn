@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis.Editor.Shared.Extensions;
 using Microsoft.CodeAnalysis.ErrorReporting;
@@ -160,7 +161,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                         // tags. Only dealing with the dataTagSpans if the count is 1 because we do not see a multi-buffer case
                         // occurring
                         var dataTagSpans = tag.Span.GetSpans(snapshot);
-                        if (dataTagSpans.Count == 1)
+                        if (dataTagSpans.Count == 1 && !_cache.Contains((tag, null)))
                         {
                             _cache.Add((tag, tagSpan: null));
                         }
