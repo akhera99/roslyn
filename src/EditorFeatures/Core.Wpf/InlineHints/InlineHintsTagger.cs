@@ -155,6 +155,17 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                     // active view and disregards and requests for tags not in that view
                     var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
                     var tags = _tagAggregator.GetTags(new NormalizedSnapshotSpanCollection(fullSpan));
+                    var tagArray = tags.ToArray();
+                    for (var i = 0; i < tagArray.Length; i++)
+                    {
+                        for (var j = i + 1; j < tagArray.Length; j++)
+                        {
+                            if (tagArray[i].Span.Start.GetPoint(snapshot, PositionAffinity.Predecessor) == tagArray[j].Span.Start.GetPoint(snapshot, PositionAffinity.Predecessor))
+                            {
+
+                            }
+                        }
+                    }
                     foreach (var tag in tags)
                     {
                         // Gets the associated span from the snapshot span and creates the IntraTextAdornmentTag from the data
