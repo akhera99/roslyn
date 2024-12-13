@@ -7,6 +7,7 @@ using System.ComponentModel.Composition;
 using Microsoft.CodeAnalysis.Editor.Host;
 using Microsoft.CodeAnalysis.Editor.Shared.Extensions;
 using Microsoft.CodeAnalysis.Editor.Shared.Utilities;
+using Microsoft.CodeAnalysis.Editor.Tagging;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
@@ -26,10 +27,9 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
     [Export(typeof(IViewTaggerProvider))]
     [ContentType(ContentTypeNames.RoslynContentType)]
     [TagType(typeof(IntraTextAdornmentTag))]
-    [Name(nameof(InlineHintsTaggerProvider))]
-    internal class InlineHintsTaggerProvider : IViewTaggerProvider
+    [Name(nameof(InlineHintsViewTaggerProvider))]
+    internal class InlineHintsViewTaggerProvider : IViewTaggerProvider
     {
-        private readonly IViewTagAggregatorFactoryService _viewTagAggregatorFactoryService;
         public readonly IClassificationFormatMapService ClassificationFormatMapService;
         public readonly IClassificationTypeRegistryService ClassificationTypeRegistryService;
         public readonly IThreadingContext ThreadingContext;
@@ -39,11 +39,12 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         public readonly ClassificationTypeMap TypeMap;
         public readonly Lazy<IStreamingFindUsagesPresenter> StreamingFindUsagesPresenter;
         public readonly EditorOptionsService EditorOptionsService;
+        public readonly IInlineHintKeyProcessor InlineHintKeyProcessor;
+        public readonly TaggerHost TaggerHost;
 
         [ImportingConstructor]
         [Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
-        public InlineHintsTaggerProvider(
-            IViewTagAggregatorFactoryService viewTagAggregatorFactoryService,
+        public InlineHintsViewTaggerProvider(
             IClassificationFormatMapService classificationFormatMapService,
             IClassificationTypeRegistryService classificationTypeRegistryService,
             IThreadingContext threadingContext,
@@ -52,9 +53,10 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             IToolTipService toolTipService,
             ClassificationTypeMap typeMap,
             Lazy<IStreamingFindUsagesPresenter> streamingFindUsagesPresenter,
-            EditorOptionsService editorOptionsService)
+            EditorOptionsService editorOptionsService,
+            [Import(AllowDefault = true)] IInlineHintKeyProcessor inlineHintKeyProcessor,
+            TaggerHost taggerHost)
         {
-            _viewTagAggregatorFactoryService = viewTagAggregatorFactoryService;
             ClassificationFormatMapService = classificationFormatMapService;
             ClassificationTypeRegistryService = classificationTypeRegistryService;
             ThreadingContext = threadingContext;
@@ -63,6 +65,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             StreamingFindUsagesPresenter = streamingFindUsagesPresenter;
             TypeMap = typeMap;
             EditorOptionsService = editorOptionsService;
+            InlineHintKeyProcessor = inlineHintKeyProcessor;
+            TaggerHost = taggerHost;
 
             AsynchronousOperationListener = listenerProvider.GetListener(FeatureAttribute.InlineHints);
         }
@@ -74,8 +78,8 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
                 return null;
             }
 
-            var tagAggregator = _viewTagAggregatorFactoryService.CreateTagAggregator<InlineHintDataTag>(textView);
-            return new InlineHintsTagger(this, (IWpfTextView)textView, buffer, tagAggregator) as ITagger<T>;
+            var inlineHintsDataTagger = new InlineHintsDataTaggerProvider(TaggerHost, InlineHintKeyProcessor).CreateTagger(textView, buffer);
+            return new InlineHintsTagger(this, (IWpfTextView)textView, buffer, inlineHintsDataTagger) as ITagger<T>;
         }
     }
 }

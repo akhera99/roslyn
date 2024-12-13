@@ -38,14 +38,14 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
         private readonly ITextView _textView;
         private readonly SnapshotSpan _span;
         private readonly InlineHint _hint;
-        private readonly InlineHintsTaggerProvider _taggerProvider;
+        private readonly InlineHintsViewTaggerProvider _taggerProvider;
 
         private InlineHintsTag(
             FrameworkElement adornment,
             ITextView textView,
             SnapshotSpan span,
             InlineHint hint,
-            InlineHintsTaggerProvider taggerProvider)
+            InlineHintsViewTaggerProvider taggerProvider)
             : base(adornment,
                    removalCallback: null,
                    topSpace: null,
@@ -83,7 +83,7 @@ namespace Microsoft.CodeAnalysis.Editor.InlineHints
             TextFormattingRunProperties format,
             IWpfTextView textView,
             SnapshotSpan span,
-            InlineHintsTaggerProvider taggerProvider,
+            InlineHintsViewTaggerProvider taggerProvider,
             IClassificationFormatMap formatMap,
             bool classify)
         {
