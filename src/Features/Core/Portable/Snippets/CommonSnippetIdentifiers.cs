@@ -14,4 +14,5 @@ internal static class CommonSnippetIdentifiers
     public const string Constructor = "ctor";
     public const string Property = "prop";
     public const string GetOnlyProperty = "propg";
+    public const string Region = "#region";
 }

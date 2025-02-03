@@ -62,7 +62,7 @@ internal abstract class AbstractCSharpAutoPropertySnippetProvider : AbstractProp
         }
 
         modifiers = modifiers.AddRange(GetAdditionalPropertyModifiers(syntaxContext));
-
+        SyntaxFactory.RegionDirectiveTrivia
         return SyntaxFactory.PropertyDeclaration(
             attributeLists: default,
             modifiers: modifiers,
