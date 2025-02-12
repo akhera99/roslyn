@@ -581,4 +581,7 @@
   <data name="required_property" xml:space="preserve">
     <value>required property</value>
   </data>
+  <data name="property_and_backing_field" xml:space="preserve">
+    <value>property and backing field</value>
+  </data>
 </root>

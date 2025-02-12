@@ -22,6 +22,7 @@ internal static class CSharpSnippetIdentifiers
     public const string If = "if";
     public const string Interface = "interface";
     public const string Lock = "lock";
+    public const string PropFull = "propfull";
     public const string StaticIntMain = "sim";
     public const string Struct = "struct";
     public const string StaticVoidMain = "svm";

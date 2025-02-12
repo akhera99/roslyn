@@ -11,6 +11,7 @@ namespace Microsoft.CodeAnalysis.Snippets.SnippetProviders;
 internal abstract class AbstractPropertySnippetProvider<TPropertyDeclarationSyntax> : AbstractSingleChangeSnippetProvider<TPropertyDeclarationSyntax>
     where TPropertyDeclarationSyntax : SyntaxNode
 {
+    cw
     /// <summary>
     /// Generates the property syntax.
     /// Requires language specificity for the TypeSyntax as well as the

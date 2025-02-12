@@ -47,6 +47,7 @@ internal sealed class SnippetCompletionProvider : LSPCompletionProvider
         CSharpSnippetIdentifiers.Interface,
         CSharpSnippetIdentifiers.Lock,
         CommonSnippetIdentifiers.Property,
+        CSharpSnippetIdentifiers.PropFull,
         CommonSnippetIdentifiers.GetOnlyProperty,
         CSharpSnippetIdentifiers.StaticIntMain,
         CSharpSnippetIdentifiers.Struct,

@@ -302,6 +302,11 @@
         <target state="translated">&lt;variabile di criterio&gt;</target>
         <note />
       </trans-unit>
+      <trans-unit id="property_and_backing_field">
+        <source>property and backing field</source>
+        <target state="new">property and backing field</target>
+        <note />
+      </trans-unit>
       <trans-unit id="range_variable">
         <source>&lt;range variable&gt;</source>
         <target state="translated">&lt;variabile di intervallo&gt;</target>
