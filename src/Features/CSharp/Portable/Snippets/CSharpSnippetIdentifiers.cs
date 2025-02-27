@@ -17,6 +17,7 @@ internal static class CSharpSnippetIdentifiers
     public const string For = "for";
     public const string ReversedFor = "forr";
     public const string ForEach = "foreach";
+    public const string Namespace = "namespace";
     public const string InitOnlyProperty = "propi";
     public const string RequiredProperty = "propr";
     public const string If = "if";

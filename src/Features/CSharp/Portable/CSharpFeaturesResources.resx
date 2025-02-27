@@ -581,4 +581,7 @@
   <data name="required_property" xml:space="preserve">
     <value>required property</value>
   </data>
+  <data name="namespace_declaration" xml:space="preserve">
+    <value>namespace declaration</value>
+  </data>
 </root>

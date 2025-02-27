@@ -28,9 +28,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
     [method: Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
     internal sealed class CSharpNamespaceSnippetProvider() : AbstractNamespaceSnippetProvider<BaseNamespaceDeclarationSyntax>
     {
-        public override string Identifier => throw new NotImplementedException();
+        public override string Identifier => CSharpSnippetIdentifiers.Namespace;
 
-        public override string Description => throw new NotImplementedException();
+        public override string Description => CSharpFeaturesResources.namespace_declaration;
 
         protected override async Task<ImmutableArray<TextChange>> GenerateSnippetTextChangesAsync(Document document, int position, CancellationToken cancellationToken)
         {
@@ -42,7 +42,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
             if (namespaceDeclarationPreference == CodeAnalysis.CodeStyle.NamespaceDeclarationPreference.BlockScoped)
             {
                 var generator = SyntaxGenerator.GetGenerator(document);
-                return generator.NamespaceDeclaration()
+                return generator.NamespaceDeclaration(namespaceDeclarationName, )
             }
             else
             {
