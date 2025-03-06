@@ -297,6 +297,11 @@
         <target state="translated">由于可能导致创建显式命名的匿名类型成员，自动选择已禁用。</target>
         <note />
       </trans-unit>
+      <trans-unit id="namespace_declaration">
+        <source>namespace declaration</source>
+        <target state="new">namespace declaration</target>
+        <note />
+      </trans-unit>
       <trans-unit id="pattern_variable">
         <source>&lt;pattern variable&gt;</source>
         <target state="translated">&lt;模式变量&gt;</target>

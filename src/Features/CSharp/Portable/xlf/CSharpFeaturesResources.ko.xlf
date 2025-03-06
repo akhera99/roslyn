@@ -297,6 +297,11 @@
         <target state="translated">명시적으로 이름이 지정된 익명 형식 멤버가 만들어질 수 있어 자동 선택을 사용하지 않도록 설정했습니다.</target>
         <note />
       </trans-unit>
+      <trans-unit id="namespace_declaration">
+        <source>namespace declaration</source>
+        <target state="new">namespace declaration</target>
+        <note />
+      </trans-unit>
       <trans-unit id="pattern_variable">
         <source>&lt;pattern variable&gt;</source>
         <target state="translated">&lt;pattern variable&gt;</target>

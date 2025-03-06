@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CSharp.Extensions.ContextQuery;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Editing;
@@ -32,37 +33,51 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets
 
         public override string Description => CSharpFeaturesResources.namespace_declaration;
 
-        protected override async Task<ImmutableArray<TextChange>> GenerateSnippetTextChangesAsync(Document document, int position, CancellationToken cancellationToken)
+        protected override async Task<BaseNamespaceDeclarationSyntax> GenerateNamespaceDeclarationAsync(Document document, int position, CancellationToken cancellationToken)
         {
             var options = (CSharpAnalyzerOptionsProvider)await document.GetAnalyzerOptionsProviderAsync(cancellationToken).ConfigureAwait(false);
             var namespaceDeclarationPreference = options.NamespaceDeclarations.Value;
             var syntaxFacts = document.GetRequiredLanguageService<ISyntaxFactsService>();
             var namespaceDeclarationName = PathMetadataUtilities.TryBuildNamespaceFromFolders(document.Folders, syntaxFacts);
+            var generator = SyntaxGenerator.GetGenerator(document);
 
             if (namespaceDeclarationPreference == CodeAnalysis.CodeStyle.NamespaceDeclarationPreference.BlockScoped)
             {
-                var generator = SyntaxGenerator.GetGenerator(document);
-                return generator.NamespaceDeclaration(namespaceDeclarationName, )
+                var declaration = generator.NamespaceDeclaration(namespaceDeclarationName ?? "MyNamespace");
+                return (BaseNamespaceDeclarationSyntax)declaration;
             }
             else
             {
-
+                return SyntaxFactory.FileScopedNamespaceDeclaration(SyntaxFactory.ParseName(namespaceDeclarationName ?? "MyNamespace"));
             }
         }
 
         protected override ImmutableArray<SnippetPlaceholder> GetPlaceHolderLocationsList(BaseNamespaceDeclarationSyntax node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return [new SnippetPlaceholder(node.Name.ToString(), node.Name.SpanStart)];
         }
 
         protected override int GetTargetCaretPosition(BaseNamespaceDeclarationSyntax caretTarget, SourceText sourceText)
         {
-            throw new NotImplementedException();
+            if (caretTarget is NamespaceDeclarationSyntax namespaceDeclaration)
+            {
+                var triviaSpan = namespaceDeclaration.CloseBraceToken.LeadingTrivia.Span;
+                var line = sourceText.Lines.GetLineFromPosition(triviaSpan.Start);
+
+                // Getting the location at the end of the line before the newline.
+                return line.Span.End;
+            }
+            else
+            {
+                return ((FileScopedNamespaceDeclarationSyntax)caretTarget).SemicolonToken.SpanStart;
+            }
         }
 
         protected override bool IsValidSnippetLocationCore(SnippetContext context, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var syntaxContext = (CSharpSyntaxContext)context.SyntaxContext;
+
+            return syntaxContext.IsGlobalStatementContext;
         }
     }
 }

@@ -297,6 +297,11 @@
         <target state="translated">Seleção automática desabilitada devido à possível criação de membros do tipo anônimo nomeados explicitamente.</target>
         <note />
       </trans-unit>
+      <trans-unit id="namespace_declaration">
+        <source>namespace declaration</source>
+        <target state="new">namespace declaration</target>
+        <note />
+      </trans-unit>
       <trans-unit id="pattern_variable">
         <source>&lt;pattern variable&gt;</source>
         <target state="translated">&lt;variável de padrão&gt;</target>

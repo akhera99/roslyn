@@ -297,6 +297,11 @@
         <target state="translated">由於可能會建立明確命名的匿名類型成員，所以停用自動選取。</target>
         <note />
       </trans-unit>
+      <trans-unit id="namespace_declaration">
+        <source>namespace declaration</source>
+        <target state="new">namespace declaration</target>
+        <note />
+      </trans-unit>
       <trans-unit id="pattern_variable">
         <source>&lt;pattern variable&gt;</source>
         <target state="translated">&lt;樣式變數&gt;</target>

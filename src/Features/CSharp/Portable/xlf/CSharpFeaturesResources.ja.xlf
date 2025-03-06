@@ -297,6 +297,11 @@
         <target state="translated">明示的に指定された匿名型メンバーの作成である可能性があるため、自動選択は無効になっています。</target>
         <note />
       </trans-unit>
+      <trans-unit id="namespace_declaration">
+        <source>namespace declaration</source>
+        <target state="new">namespace declaration</target>
+        <note />
+      </trans-unit>
       <trans-unit id="pattern_variable">
         <source>&lt;pattern variable&gt;</source>
         <target state="translated">&lt;pattern variable&gt;</target>
