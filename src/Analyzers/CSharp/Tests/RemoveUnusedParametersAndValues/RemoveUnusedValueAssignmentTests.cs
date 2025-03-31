@@ -10188,4 +10188,84 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
             }
         }.RunAsync();
     }
+
+    [Theory]
+    [InlineData(nameof(PreferDiscard))]
+    [InlineData(nameof(PreferUnusedLocal))]
+    public async Task TestAssignmentOfValueInFinallyClause(string optionName)
+    {
+        await TestMissingInRegularAndScriptAsync(
+            """
+            using System;
+            using System.Text;
+            
+            public class Class
+            {
+                public string ValidateIdSimple(string customerId)
+                {
+                    Lazy<StringBuilder> messageBuilder = new();
+                    var result = string.Empty;
+            
+                    try
+                    {
+                        if (string.IsNullOrEmpty(customerId) || customerId.Length != 4)
+                            messageBuilder.Value.Append("Customer ID must be 4 characters.");
+                    }
+                    finally
+                    {
+                        if (messageBuilder.IsValueCreated)
+                            // Don't want to report IDE0059 here.
+                            [|result|] = messageBuilder.ToString();
+                    }
+            
+                    return result;
+                }
+            }
+            """, optionName);
+    }
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/77258")]
+    public async Task TestAssignmentOfValueInFinally()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                using System;
+                using System.Text;
+
+                public class Class
+                {
+                    public static void Main()
+                    {
+                    }
+
+                    public string ValidateIdSimple(string customerId)
+                    {
+                        Lazy<StringBuilder> messageBuilder = new();
+                        var result = string.Empty;
+
+                        try
+                        {
+                            if (string.IsNullOrEmpty(customerId) || customerId.Length != 4)
+                                {|IDE0058:messageBuilder.Value.Append("Customer ID must be 4 characters.");|}
+                        }
+                        finally
+                        {
+                            if (messageBuilder.IsValueCreated)
+                                // Don't want to report IDE0059 here.
+                                result = messageBuilder.ToString();
+                        }
+
+                        return result;
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            LanguageVersion = LanguageVersion.CSharp12,
+            TestState =
+            {
+                OutputKind = OutputKind.ConsoleApplication,
+            }
+        }.RunAsync();
+    }
 }
