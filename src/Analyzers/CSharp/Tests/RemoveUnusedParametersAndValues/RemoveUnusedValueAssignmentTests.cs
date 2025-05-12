@@ -10188,4 +10188,27 @@ parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSh
             }
         }.RunAsync();
     }
+
+    [Fact]
+    public async Task TestAssignValueInOperatorVariableUsed()
+    {
+        await new VerifyCS.Test
+        {
+            TestCode = """
+                namespace Repro
+                {
+                    public static class Repro
+                    {
+                        public static string Foo(object obj)
+                        {
+                            return obj is string s
+                                ? nameof(s.Length)
+                                : null;
+                        }
+                    }
+                }
+                """,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+        }.RunAsync();
+    }
 }
