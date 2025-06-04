@@ -29,7 +29,7 @@ public class CSharpImmediate : AbstractEditorTest
         await TestServices.SolutionExplorer.AddProjectAsync("TestProj", WellKnownProjectTemplates.ConsoleApplication, LanguageNames.CSharp, HangMitigatingCancellationToken);
     }
 
-    [IdeFact(Skip = "")]
+    [IdeFact(Skip = "https://github.com/dotnet/roslyn/issues/78811")]
     public async Task DumpLocalVariableValue()
     {
         await TestServices.Editor.SetTextAsync(@"
