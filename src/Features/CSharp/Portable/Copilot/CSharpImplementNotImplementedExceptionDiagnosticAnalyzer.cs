@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
+
 namespace Microsoft.CodeAnalysis.CSharp.Copilot;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -30,7 +31,6 @@ internal sealed class CSharpImplementNotImplementedExceptionDiagnosticAnalyzer()
             var notImplementedExceptionType = context.Compilation.GetTypeByMetadataName(typeof(NotImplementedException).FullName!);
             if (notImplementedExceptionType is null)
                 return;
-
             context.RegisterOperationBlockAction(context => AnalyzeOperationBlock(context, notImplementedExceptionType));
         });
     }
@@ -39,6 +39,9 @@ internal sealed class CSharpImplementNotImplementedExceptionDiagnosticAnalyzer()
         OperationBlockAnalysisContext context,
         INamedTypeSymbol notImplementedExceptionType)
     {
+        var options = context.Options;
+        var check = options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("dotnet_diagnostic.IDE3000.copilot_generate_method_implementation", out var value);
+
         foreach (var block in context.OperationBlocks)
             AnalyzeBlock(block);
 
