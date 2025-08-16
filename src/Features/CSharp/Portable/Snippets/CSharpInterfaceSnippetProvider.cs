@@ -7,9 +7,12 @@ using System.Collections.Generic;
 using System.Composition;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CodeStyle;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics.Analyzers.NamingStyles;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.Utilities;
 using Microsoft.CodeAnalysis.Snippets;
@@ -43,7 +46,7 @@ internal sealed class CSharpInterfaceSnippetProvider() : AbstractCSharpTypeSnipp
         var generator = SyntaxGenerator.GetGenerator(document);
         var semanticModel = await document.GetRequiredSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
-        var name = NameGenerator.GenerateUniqueName("MyInterface", name => semanticModel.LookupSymbols(position, name: name).IsEmpty);
+        var name = NameGenerator.GenerateUniqueName("IInterface", name => semanticModel.LookupSymbols(position, name: name).IsEmpty);
         return (InterfaceDeclarationSyntax)generator.InterfaceDeclaration(name);
     }
 }
