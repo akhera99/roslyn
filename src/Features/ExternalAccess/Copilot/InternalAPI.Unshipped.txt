@@ -111,6 +111,8 @@ Microsoft.CodeAnalysis.ExternalAccess.Copilot.SemanticSearch.SemanticSearchCopil
 Microsoft.CodeAnalysis.ExternalAccess.Copilot.SemanticSearch.SemanticSearchCopilotGeneratedQueryImpl.SemanticSearchCopilotGeneratedQueryImpl() -> void
 Microsoft.CodeAnalysis.ExternalAccess.Copilot.SemanticSearch.SemanticSearchCopilotGeneratedQueryImpl.Text.get -> string!
 Microsoft.CodeAnalysis.ExternalAccess.Copilot.SemanticSearch.SemanticSearchCopilotGeneratedQueryImpl.Text.init -> void
+Microsoft.CodeAnalysis.ExternalAccess.Copilot.Utilities.ILanguageServerTelemetryReporterWrapper
+Microsoft.CodeAnalysis.ExternalAccess.Copilot.Utilities.ILanguageServerTelemetryReporterWrapper.ReportEvent(string! name, System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string!, object?>>! properties) -> void
 Microsoft.CodeAnalysis.SemanticSearch.SemanticSearchCopilotServiceWrapper
 Microsoft.CodeAnalysis.SemanticSearch.SemanticSearchCopilotServiceWrapper.SemanticSearchCopilotServiceWrapper(System.Lazy<Microsoft.CodeAnalysis.ExternalAccess.Copilot.SemanticSearch.ISemanticSearchCopilotServiceImpl!>? impl) -> void
 override Microsoft.CodeAnalysis.ExternalAccess.Copilot.Completion.CodeSnippetItem.Equals(object? obj) -> bool
