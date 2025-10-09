@@ -763,24 +763,99 @@ internal sealed partial class InlineRenameSession : IInlineRenameSession, IFeatu
             this.IsCommitInProgress = true;
             this.CommitStateChange?.Invoke(this, EventArgs.Empty);
 
-            // We do not cancel on edit because as part of the rename system we have asynchronous work still
-            // occurring that itself may be asynchronously editing the buffer (for example, updating reference
-            // locations with the final renamed text).  Ideally though, once we start comitting, we would cancel
-            // any of that work and then only have the work of rolling back to the original state of the world
-            // and applying the desired edits ourselves.
-            var factory = Workspace.Services.GetRequiredService<IBackgroundWorkIndicatorFactory>();
-            using var context = factory.Create(
-                    _triggerView, TriggerSpan, EditorFeaturesResources.Computing_Rename_information,
-                    cancelOnEdit: false, cancelOnFocusLost: false);
+            // Create a cancellation token that we control, not tied to focus
+            using var commitCancellationSource = new CancellationTokenSource();
+            
+            // Track focus state
+            var focusLostTcs = new TaskCompletionSource<bool>();
+            var focusGainedTcs = new TaskCompletionSource<bool>();
+            IUIThreadOperationContext currentContext = null;
+            var contextLock = new object();
+            
+            EventHandler focusLostHandler = (s, e) => 
+            {
+                focusLostTcs.TrySetResult(true);
+                focusGainedTcs = new TaskCompletionSource<bool>(); // Reset for next focus gain
+            };
+            
+            EventHandler focusGainedHandler = (s, e) => focusGainedTcs.TrySetResult(true);
+            
+            if (_triggerView != null)
+            {
+                _triggerView.LostAggregateFocus += focusLostHandler;
+                _triggerView.GotAggregateFocus += focusGainedHandler;
+            }
 
-            // .ConfigureAwait(true); so we can return to the UI thread to dispose the operation context.  It
-            // has a non-JTF threading dependency on the main thread.  So it can deadlock if you call it on a BG
-            // thread when in a blocking JTF call.
-            await CommitCoreAsync(context, previewChanges).ConfigureAwait(true);
+            try
+            {
+                var factory = Workspace.Services.GetRequiredService<IBackgroundWorkIndicatorFactory>();
+                
+                // Create initial UI context
+                lock (contextLock)
+                {
+                    currentContext = factory.Create(
+                        _triggerView, TriggerSpan, EditorFeaturesResources.Computing_Rename_information,
+                        cancelOnEdit: false, cancelOnFocusLost: true);
+                }
+
+                // Run the commit operation with our own cancellation token
+                var commitTask = CommitCoreWithCustomContextAsync(factory, contextLock, () => currentContext, 
+                                                                 previewChanges, commitCancellationSource.Token);
+                
+                // Monitor for focus changes while the operation runs
+                while (!commitTask.IsCompleted)
+                {
+                    var completedTask = await Task.WhenAny(
+                        commitTask, 
+                        focusLostTcs.Task, 
+                        focusGainedTcs.Task,
+                        Task.Delay(100) // Small delay to prevent tight loop
+                    ).ConfigureAwait(true);
+                    
+                    if (completedTask == focusLostTcs.Task)
+                    {
+                        // Focus was lost - dispose of the current UI context
+                        lock (contextLock)
+                        {
+                            currentContext?.Dispose();
+                            currentContext = null;
+                        }
+                        focusLostTcs = new TaskCompletionSource<bool>(); // Reset for next focus loss
+                    }
+                    else if (completedTask == focusGainedTcs.Task && !commitTask.IsCompleted)
+                    {
+                        // Focus was gained and operation is still running - recreate UI
+                        lock (contextLock)
+                        {
+                            currentContext?.Dispose(); // Dispose any existing context
+                            currentContext = factory.Create(
+                                _triggerView, TriggerSpan, EditorFeaturesResources.Computing_Rename_information,
+                                cancelOnEdit: false, cancelOnFocusLost: true);
+                        }
+                        focusGainedTcs = new TaskCompletionSource<bool>(); // Reset for next focus gain
+                    }
+                }
+                
+                // Clean up any remaining UI context
+                lock (contextLock)
+                {
+                    currentContext?.Dispose();
+                }
+                
+                // Await the result
+                await commitTask.ConfigureAwait(true);
+            }
+            finally
+            {
+                if (_triggerView != null)
+                {
+                    _triggerView.LostAggregateFocus -= focusLostHandler;
+                    _triggerView.GotAggregateFocus -= focusGainedHandler;
+                }
+            }
         }
         catch (OperationCanceledException)
         {
-            // We've used CA(true) consistently in this method.  So we should always be on the UI thread.
             DismissUIAndRollbackEditsAndEndRenameSession_MustBeCalledOnUIThread(
                 RenameLogMessage.UserActionOutcome.Canceled | RenameLogMessage.UserActionOutcome.Committed, previewChanges);
             return;
@@ -790,16 +865,19 @@ internal sealed partial class InlineRenameSession : IInlineRenameSession, IFeatu
             this.IsCommitInProgress = false;
             this.CommitStateChange?.Invoke(this, EventArgs.Empty);
         }
-
-        return;
     }
 
-    private async Task CommitCoreAsync(IUIThreadOperationContext operationContext, bool previewChanges)
+    private async Task CommitCoreWithCustomContextAsync(
+        IBackgroundWorkIndicatorFactory factory,
+        object contextLock,
+        Func<IUIThreadOperationContext> getCurrentContext,
+        bool previewChanges, 
+        CancellationToken cancellationToken)
     {
-        var cancellationToken = operationContext.UserCancellationToken;
         var eventName = previewChanges ? FunctionId.Rename_CommitCoreWithPreview : FunctionId.Rename_CommitCore;
         using (Logger.LogBlock(eventName, KeyValueLogMessage.Create(LogType.UserAction), cancellationToken))
         {
+            // Use our custom cancellation token instead of the one from operationContext
             var info = await _conflictResolutionTask.JoinAsync(cancellationToken).ConfigureAwait(true);
             var newSolution = info.NewSolution;
 
@@ -807,7 +885,6 @@ internal sealed partial class InlineRenameSession : IInlineRenameSession, IFeatu
             {
                 var previewService = Workspace.Services.GetService<IPreviewDialogService>();
 
-                // The preview service needs to be called from the UI thread, since it's doing COM calls underneath.
                 await _threadingContext.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
                 newSolution = previewService.PreviewChanges(
                     string.Format(EditorFeaturesResources.Preview_Changes_0, EditorFeaturesResources.Rename),
@@ -825,37 +902,64 @@ internal sealed partial class InlineRenameSession : IInlineRenameSession, IFeatu
                 }
             }
 
-            // The user hasn't canceled by now, so we're done waiting for them. Off to rename!
-            using var _1 = operationContext.AddScope(allowCancellation: true, EditorFeaturesResources.Updating_files);
-
-            await TaskScheduler.Default;
-
-            // While on the background, attempt to figure out the actual changes to make to the workspace's current solution.
-            var documentChanges = await CalculateFinalDocumentChangesAsync(newSolution, cancellationToken).ConfigureAwait(false);
-
-            // Now jump back to the UI thread to actually apply those changes.
-            await _threadingContext.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-
-            // We're about to make irrevocable changes to the workspace and UI.  We're no longer cancellable at this point.
-            using var _2 = operationContext.AddScope(allowCancellation: false, EditorFeaturesResources.Updating_files);
-            cancellationToken = CancellationToken.None;
-
-            // Dismiss the rename UI and rollback any linked edits made.
-            DismissUIAndRollbackEditsAndEndRenameSession_MustBeCalledOnUIThread(
-                RenameLogMessage.UserActionOutcome.Committed, previewChanges,
-                () =>
+            // Create scope with current context if available
+            IDisposable scope1 = null;
+            lock (contextLock)
+            {
+                var context = getCurrentContext();
+                if (context != null && !context.UserCancellationToken.IsCancellationRequested)
                 {
-                    // Now try to apply that change we computed to the workspace.
-                    var error = TryApplyRename(documentChanges);
-                    if (error is not null)
+                    scope1 = context.AddScope(allowCancellation: true, EditorFeaturesResources.Updating_files);
+                }
+            }
+
+            try
+            {
+                await TaskScheduler.Default;
+
+                var documentChanges = await CalculateFinalDocumentChangesAsync(newSolution, cancellationToken).ConfigureAwait(false);
+
+                await _threadingContext.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+                // Create second scope with current context if available
+                IDisposable scope2 = null;
+                lock (contextLock)
+                {
+                    var context = getCurrentContext();
+                    if (context != null && !context.UserCancellationToken.IsCancellationRequested)
                     {
-                        var notificationService = Workspace.Services.GetService<INotificationService>();
-                        notificationService.SendNotification(
-                            error.Value.message, EditorFeaturesResources.Rename_Symbol, error.Value.severity);
+                        scope2 = context.AddScope(allowCancellation: false, EditorFeaturesResources.Updating_files);
                     }
-                });
+                }
+
+                try
+                {
+                    // Complete the rename operation regardless of UI state
+                    DismissUIAndRollbackEditsAndEndRenameSession_MustBeCalledOnUIThread(
+                        RenameLogMessage.UserActionOutcome.Committed, previewChanges,
+                        () =>
+                        {
+                            var error = TryApplyRename(documentChanges);
+                            if (error is not null)
+                            {
+                                var notificationService = Workspace.Services.GetService<INotificationService>();
+                                notificationService.SendNotification(
+                                    error.Value.message, EditorFeaturesResources.Rename_Symbol, error.Value.severity);
+                            }
+                        });
+                }
+                finally
+                {
+                    scope2?.Dispose();
+                }
+            }
+            finally
+            {
+                scope1?.Dispose();
+            }
         }
 
+        // Keep the helper method as it was
         async Task<ImmutableArray<(DocumentId documentId, string newName, SyntaxNode newRoot, SourceText newText)>> CalculateFinalDocumentChangesAsync(
             Solution newSolution, CancellationToken cancellationToken)
         {
