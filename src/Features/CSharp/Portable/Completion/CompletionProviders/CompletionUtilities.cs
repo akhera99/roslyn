@@ -238,4 +238,15 @@ internal static class CompletionUtilities
                 throw ExceptionUtilities.Unreachable();
         }
     }
+
+    public static bool IsConstructorAccessibleAtPosition(int position, INamedTypeSymbol symbol, SemanticModel semanticModel)
+    {
+        foreach (var constructor in symbol.Constructors)
+        {
+            if (semanticModel.IsAccessible(position, constructor))
+            {
+                return true;
+            }
+        }
+    }
 }
