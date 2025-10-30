@@ -15,6 +15,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Options;
+using Microsoft.CodeAnalysis.Shared.Extensions;
 
 namespace Microsoft.CodeAnalysis.CSharp.AddImport;
 
@@ -30,9 +31,41 @@ internal sealed class CSharpAddImportsService() : AbstractAddImportsService<
     public override CodeStyleOption2<AddImportPlacement> GetUsingDirectivePlacementCodeStyleOption(IOptionsReader configOptions)
         => configOptions.GetOption(CSharpCodeStyleOptions.PreferredUsingDirectivePlacement);
 
-    // C# doesn't have global imports.
+    // Get implicit/global usings from all compilation units in the compilation
     protected override ImmutableArray<SyntaxNode> GetGlobalImports(Compilation compilation, SyntaxGenerator generator)
-        => [];
+    {
+        using var _ = PooledObjects.ArrayBuilder<SyntaxNode>.GetInstance(out var globalImports);
+
+        foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
+            if (syntaxTree.GetRoot() is CompilationUnitSyntax compilationUnit)
+            {
+                foreach (var usingDirective in compilationUnit.Usings)
+                {
+                    // Only include global using directives (those with 'global' keyword)
+                    if (usingDirective.GlobalKeyword != default)
+                    {
+                        globalImports.Add(usingDirective);
+                    }
+                }
+            }
+        }
+
+        // Also include usings from compilation options (implicit usings from MSBuild/SDK)
+        if (compilation is CSharpCompilation csharpCompilation)
+        {
+            foreach (var @using in csharpCompilation.Options.Usings)
+            {
+                // Create using directive from the namespace name
+                // The name validation is handled by the compiler when creating the compilation
+                var usingDirective = SyntaxFactory.UsingDirective(
+                    SyntaxFactory.ParseName(@using));
+                globalImports.Add(usingDirective);
+            }
+        }
+
+        return globalImports.ToImmutableAndClear();
+    }
 
     protected override SyntaxNode? GetAlias(UsingDirectiveSyntax usingOrAlias)
         => usingOrAlias.Alias;

@@ -10542,4 +10542,74 @@ class Class
                 public int Goo { get; internal set; }
             }
             """);
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/XXXXX")]
+    public Task TestDoesNotAddUsingForGlobalUsing()
+        => TestInRegularAndScriptAsync(
+            """
+            global using System.Collections.Generic;
+
+            class Class
+            {
+                void Method()
+                {
+                    [|list|] = new List<int>();
+                }
+            }
+            """,
+            """
+            global using System.Collections.Generic;
+
+            class Class
+            {
+                private List<int> list;
+
+                void Method()
+                {
+                    list = new List<int>();
+                }
+            }
+            """);
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/XXXXX")]
+    public Task TestDoesNotAddUsingForGlobalUsingInDifferentFile()
+        => TestInRegularAndScriptAsync(
+            """
+            <Workspace>
+                <Project Language="C#" AssemblyName="Assembly1" CommonReferences="true">
+                    <Document>
+            global using System.Collections.Generic;
+                    </Document>
+                    <Document>
+            class Class
+            {
+                void Method()
+                {
+                    [|list|] = new List&lt;int&gt;();
+                }
+            }
+                    </Document>
+                </Project>
+            </Workspace>
+            """,
+            """
+            <Workspace>
+                <Project Language="C#" AssemblyName="Assembly1" CommonReferences="true">
+                    <Document>
+            global using System.Collections.Generic;
+                    </Document>
+                    <Document>
+            class Class
+            {
+                private List&lt;int&gt; list;
+
+                void Method()
+                {
+                    list = new List&lt;int&gt;();
+                }
+            }
+                    </Document>
+                </Project>
+            </Workspace>
+            """);
 }
