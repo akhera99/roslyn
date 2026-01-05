@@ -223,7 +223,6 @@ jobs:
             "templateParameters": {
               "PRNumber": ${{ github.event.issue.number }},
               "CommitSHA": "${{ steps.commit-sha.outputs.sha }}",
-              "SourceBranch": "${{ steps.pr-details.outputs.ref }}",
               "EnforceLatestCommit": $ENFORCE_LATEST_COMMIT
             }
           }
