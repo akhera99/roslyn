@@ -28,8 +28,26 @@ internal sealed partial class CodeStyleHostLanguageServices : HostLanguageServic
         public static MefHostExportProvider Create(string languageName)
         {
             var assemblies = CreateAssemblies(languageName);
-            var compositionConfiguration = new ContainerConfiguration().WithAssemblies(assemblies);
+            var types = assemblies.SelectMany(GetTypesFromAssembly);
+            var compositionConfiguration = new ContainerConfiguration().WithParts(types);
             return new MefHostExportProvider(compositionConfiguration.CreateContainer());
+        }
+
+        /// <summary>
+        /// Safely gets types from an assembly, handling <see cref="ReflectionTypeLoadException"/>
+        /// that can occur when some types in the assembly can't be loaded (e.g., due to missing dependencies).
+        /// </summary>
+        private static IEnumerable<Type> GetTypesFromAssembly(Assembly assembly)
+        {
+            try
+            {
+                return assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                // Return only the types that were successfully loaded, filtering out nulls.
+                return ex.Types.Where(t => t != null)!;
+            }
         }
 
         private static ImmutableArray<Assembly> CreateAssemblies(string languageName)
