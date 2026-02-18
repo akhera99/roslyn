@@ -35,7 +35,7 @@ internal sealed partial class CodeStyleHostLanguageServices : HostLanguageServic
 
         /// <summary>
         /// Safely gets types from an assembly, handling <see cref="ReflectionTypeLoadException"/>
-        /// that can occur when some types in the assembly can't be loaded (e.g., due to missing dependencies).
+        /// that can occur when some types in the assembly can't be loaded
         /// </summary>
         private static IEnumerable<Type> GetTypesFromAssembly(Assembly assembly)
         {
@@ -45,7 +45,7 @@ internal sealed partial class CodeStyleHostLanguageServices : HostLanguageServic
             }
             catch (ReflectionTypeLoadException ex)
             {
-                // Return only the types that were successfully loaded, filtering out nulls.
+                // Return only the types that were successfully loaded
                 return ex.Types.Where(t => t != null)!;
             }
         }
