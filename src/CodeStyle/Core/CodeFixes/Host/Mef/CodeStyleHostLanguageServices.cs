@@ -46,7 +46,7 @@ internal sealed partial class CodeStyleHostLanguageServices : HostLanguageServic
             catch (ReflectionTypeLoadException ex)
             {
                 // Return only the types that were successfully loaded
-                return ex.Types.Where(t => t != null)!;
+                return ex.Types.Where(t => t is not null);
             }
         }
 
