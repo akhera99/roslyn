@@ -16,7 +16,7 @@
       <ServiceHubServiceJsonFile Include="$(IntermediateOutputPath)%(_ServicesWithSuffix.Identity)%(_ServicesWithSuffix.FileSuffix).servicehub.service.json" >
         <Content>
           <![CDATA[{
-  "host": "dotnet",
+  "host": "dotnet.net10",
   "hostId": "RoslynCodeAnalysisService%(_ServicesWithSuffix.HostIdSuffix)",
   "hostGroupAllowed": true,
   "serviceOverride": true, 
