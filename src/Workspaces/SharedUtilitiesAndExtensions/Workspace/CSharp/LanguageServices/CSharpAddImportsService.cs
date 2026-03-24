@@ -50,6 +50,15 @@ internal sealed class CSharpAddImportsService() : AbstractAddImportsService<
                     }
                 }
             }
+
+            // Include implicit usings from compilation options (<ImplicitUsings>enable</ImplicitUsings> in csproj)
+            if (semanticModel.Compilation.Options is CSharpCompilationOptions { Usings: { IsEmpty: false } usings })
+            {
+                foreach (var implicitUsing in usings)
+                {
+                    result.Add(generator.NamespaceImportDeclaration(implicitUsing));
+                }
+            }
         }
 
         return result.ToImmutableAndClear();

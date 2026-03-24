@@ -25,9 +25,14 @@ namespace Microsoft.CodeAnalysis.CSharp.UnitTests.Editing;
 [UseExportProvider]
 public sealed class AddImportsTests
 {
-    private static async Task<Document> GetDocument(string code, bool withAnnotations)
+    private static async Task<Document> GetDocument(string code, bool withAnnotations, params string[] implicitUsings)
     {
         var ws = new AdhocWorkspace();
+
+        var compilationOptions = implicitUsings.Length > 0
+            ? new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithUsings(implicitUsings)
+            : null;
+
         var emptyProject = ws.AddProject(
             ProjectInfo.Create(
                 ProjectId.CreateNewId(),
@@ -35,7 +40,8 @@ public sealed class AddImportsTests
                 "test",
                 "test.dll",
                 LanguageNames.CSharp,
-                metadataReferences: [NetFramework.mscorlib]));
+                metadataReferences: [NetFramework.mscorlib],
+                compilationOptions: compilationOptions));
 
         var doc = emptyProject.AddDocument("test.cs", code);
 
@@ -60,9 +66,10 @@ public sealed class AddImportsTests
 
     private static Task TestNoImportsAddedAsync(
         string initialText,
-        bool useSymbolAnnotations)
+        bool useSymbolAnnotations,
+        params string[] implicitUsings)
     {
-        return TestAsync(initialText, initialText, initialText, useSymbolAnnotations, performCheck: false);
+        return TestAsync(initialText, initialText, initialText, useSymbolAnnotations, performCheck: false, implicitUsings: implicitUsings);
     }
 
     private static async Task TestAsync(
@@ -72,9 +79,10 @@ public sealed class AddImportsTests
         bool useSymbolAnnotations,
         bool placeSystemNamespaceFirst = true,
         bool placeImportsInsideNamespaces = false,
-        bool performCheck = true)
+        bool performCheck = true,
+        params string[] implicitUsings)
     {
-        var doc = await GetDocument(initialText, useSymbolAnnotations);
+        var doc = await GetDocument(initialText, useSymbolAnnotations, implicitUsings);
 
         var addImportOptions = new AddImportPlacementOptions()
         {
@@ -1412,6 +1420,61 @@ public sealed class AddImportsTests
                 }
             }
             """, useSymbolAnnotations, placeImportsInsideNamespaces: true);
+
+    #endregion
+
+    #region implicit usings
+
+    [Theory, MemberData(nameof(TestAllData))]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/72764")]
+    public Task TestImplicitUsings_DoesNotAddDuplicateUsing(bool useSymbolAnnotations)
+        => TestNoImportsAddedAsync(
+            """
+            class C
+            {
+                public System.Exception F;
+            }
+            """, useSymbolAnnotations, "System");
+
+    [Theory, MemberData(nameof(TestAllData))]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/72764")]
+    public Task TestImplicitUsings_DoesNotAddDuplicateNestedUsing(bool useSymbolAnnotations)
+        => TestNoImportsAddedAsync(
+            """
+            class C
+            {
+                public System.Collections.Generic.List<int> F;
+            }
+            """, useSymbolAnnotations, "System.Collections.Generic");
+
+    [Theory, MemberData(nameof(TestAllData))]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/72764")]
+    public Task TestImplicitUsings_StillAddsNonImplicitUsing(bool useSymbolAnnotations)
+        => TestAsync(
+            """
+            class C
+            {
+                public System.Collections.Generic.List<int> F;
+            }
+            """,
+
+            """
+            using System.Collections.Generic;
+
+            class C
+            {
+                public System.Collections.Generic.List<int> F;
+            }
+            """,
+
+            """
+            using System.Collections.Generic;
+
+            class C
+            {
+                public List<int> F;
+            }
+            """, useSymbolAnnotations, implicitUsings: ["System"]);
 
     #endregion
 }
