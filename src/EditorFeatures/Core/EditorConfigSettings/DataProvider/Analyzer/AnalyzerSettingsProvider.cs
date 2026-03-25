@@ -84,7 +84,13 @@ internal sealed class AnalyzerSettingsProvider
                     var selectedDiagnostic = g.First();
                     var isEditorconfig = selectedDiagnostic.IsDefinedInEditorConfig(editorConfigOptions);
                     var settingLocation = new SettingLocation(isEditorconfig ? LocationKind.EditorConfig : LocationKind.VisualStudio, FileName);
-                    var severity = selectedDiagnostic.GetEffectiveSeverity(editorConfigOptions);
+
+                    // When the severity is not explicitly defined in an editorconfig file, use the
+                    // full compilation-level effective severity which accounts for global analyzer configs
+                    var severity = !isEditorconfig && someReferencingProject.CompilationOptions is { } compilationOptions
+                        ? selectedDiagnostic.GetEffectiveSeverity(compilationOptions)
+                        : selectedDiagnostic.GetEffectiveSeverity(editorConfigOptions);
+
                     return new AnalyzerSetting(selectedDiagnostic, severity, SettingsUpdater, language, settingLocation);
                 });
         }
