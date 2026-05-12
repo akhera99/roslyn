@@ -440,6 +440,27 @@ internal static partial class ISymbolExtensions
                                 replacement.SetAttributeValue(DocumentationCommentXmlNames.CrefAttributeName, docId);
                                 typeParameterRef.ReplaceWith(replacement);
                             }
+                            else if (typeArgs[index] is ITypeParameterSymbol typeParameter)
+                            {
+                                // The type argument is itself a type parameter (not a concrete type).
+                                // This happens when docs are inherited from an interface/base method whose
+                                // type parameter names differ from the implementing member's names.
+                                // Remap the name so it resolves correctly during rendering.
+                                if (typeParameter.TypeParameterKind == TypeParameterKind.Method
+                                    && memberSymbol is IMethodSymbol memberMethod
+                                    && typeParameter.Ordinal < memberMethod.TypeParameters.Length)
+                                {
+                                    // Method type parameters map by ordinal position between
+                                    // the inherited method and the implementing method.
+                                    typeParamName.Value = memberMethod.TypeParameters[typeParameter.Ordinal].Name;
+                                }
+                                else
+                                {
+                                    // Containing type parameters are already mapped through
+                                    // the interface/base type substitution.
+                                    typeParamName.Value = typeParameter.Name;
+                                }
+                            }
                         }
                     }
                 }

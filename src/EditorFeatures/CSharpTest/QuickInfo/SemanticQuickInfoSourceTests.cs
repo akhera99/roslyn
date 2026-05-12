@@ -10599,4 +10599,173 @@ AnonymousTypes(
     }
 
     #endregion
+
+    #region TypeParamRef resolution (https://github.com/dotnet/roslyn/issues/83626)
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefOnGenericMethod()
+        => TestInClassAsync("""
+
+            /// <summary>
+            /// Registers <typeparamref name="TImplementation"/> as implementation of <typeparamref name="TInterface"/>.
+            /// </summary>
+            void Register<TInterface, TImplementation>() { }
+
+            void M()
+            {
+                $$Register<int, string>();
+            }
+            """,
+            MainDescription("void C.Register<int, string>()"),
+            Documentation("Registers string as implementation of int."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefOnGenericMethodOnGenericType()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            class Container<TService>
+            {
+                /// <summary>
+                /// Gets <typeparamref name="TService"/> via <typeparamref name="TImpl"/>.
+                /// </summary>
+                public void Get<TImpl>() { }
+            }
+
+            class Program
+            {
+                void M()
+                {
+                    new Container<int>().$$Get<string>();
+                }
+            }
+            """,
+            MainDescription("void Container<int>.Get<string>()"),
+            Documentation("Gets int via string."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefOnGenericExtensionMethod()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            static class Extensions
+            {
+                /// <summary>
+                /// Adds <typeparamref name="TImpl"/> as <typeparamref name="TInterface"/>.
+                /// </summary>
+                public static void AddSingleton<TInterface, TImpl>(this object services) { }
+            }
+
+            class Program
+            {
+                void M()
+                {
+                    var obj = new object();
+                    obj.$$AddSingleton<int, string>();
+                }
+            }
+            """,
+            MainDescription("(extension) void object.AddSingleton<int, string>()"),
+            Documentation("Adds string as int."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefInheritdocDifferentNames()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            interface IRegistry
+            {
+                /// <summary>
+                /// Registers <typeparamref name="TImpl"/> as <typeparamref name="TIntf"/>.
+                /// </summary>
+                void Register<TIntf, TImpl>();
+            }
+
+            class Registry : IRegistry
+            {
+                /// <inheritdoc/>
+                public void Register<A, B>() { }
+            }
+
+            class Program
+            {
+                void M()
+                {
+                    new Registry().$$Register<int, string>();
+                }
+            }
+            """,
+            MainDescription("void Registry.Register<int, string>()"),
+            Documentation("Registers string as int."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefInheritdocContainingTypeWithOffset()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            interface I<T>
+            {
+                /// <summary>Uses <typeparamref name="T"/>.</summary>
+                void M();
+            }
+
+            class C<X, Y> : I<Y>
+            {
+                /// <inheritdoc/>
+                public void $$M() { }
+            }
+            """,
+            MainDescription("void C<X, Y>.M()"),
+            Documentation("Uses Y."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefInheritdocMixedMethodAndContainingType()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            interface I<T>
+            {
+                /// <summary>Uses <typeparamref name="T"/> and <typeparamref name="U"/>.</summary>
+                void M<U>();
+            }
+
+            class C<X, Y> : I<Y>
+            {
+                /// <inheritdoc/>
+                public void M<W>() { }
+            }
+
+            class Program
+            {
+                void M()
+                {
+                    new C<int, string>().$$M<bool>();
+                }
+            }
+            """,
+            MainDescription("void C<int, string>.M<bool>()"),
+            Documentation("Uses string and bool."));
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83626")]
+    public Task TestTypeParamRefOnReducedExtensionMethodWithInferredThis()
+        => TestWithOptionsAsync(Options.Regular,
+            """
+            using System;
+
+            static class Extensions
+            {
+                /// <summary>
+                /// Converts <typeparamref name="TSource"/> to <typeparamref name="TResult"/>.
+                /// </summary>
+                public static TResult Convert<TSource, TResult>(this TSource source, Func<TSource, TResult> converter)
+                    => converter(source);
+            }
+
+            class Program
+            {
+                void M()
+                {
+                    "hello".$$Convert(s => s.Length);
+                }
+            }
+            """,
+            MainDescription("(extension) int string.Convert<string, int>(Func<string, int> converter)"),
+            Documentation("Converts string to int."));
+
+    #endregion
 }
