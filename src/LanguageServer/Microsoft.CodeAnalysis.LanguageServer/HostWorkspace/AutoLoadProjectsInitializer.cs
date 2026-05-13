@@ -56,7 +56,7 @@ internal sealed class AutoLoadProjectsInitializer(
         else if (solutionPath is not null)
         {
             _logger.LogInformation("Using VS Code settings to auto load solution {SolutionFile}", solutionPath);
-            await StartAndReportProgressAsync(() => projectSystem.OpenSolutionAsync(solutionPath));
+            await StartAndReportProgressAsync(progress => projectSystem.OpenSolutionAsync(solutionPath, progress));
             return;
         }
 
@@ -73,7 +73,7 @@ internal sealed class AutoLoadProjectsInitializer(
                 if (solutionFiles.Length == 1)
                 {
                     _logger.LogInformation("Found single solution file {SolutionFile} to auto load", solutionFiles[0]);
-                    await StartAndReportProgressAsync(() => projectSystem.OpenSolutionAsync(solutionFiles[0]));
+                    await StartAndReportProgressAsync(progress => projectSystem.OpenSolutionAsync(solutionFiles[0], progress));
                     return;
                 }
             }
@@ -91,9 +91,12 @@ internal sealed class AutoLoadProjectsInitializer(
 
         _logger.LogInformation("Discovered {count} projects to auto load", projectFiles.Count);
 
-        await StartAndReportProgressAsync(() => projectSystem.OpenProjectsAsync(projectFiles.ToImmutable()));
+        // Capture immutable snapshot before passing to fire-and-forget lambda
+        // to avoid using the pooled ArrayBuilder after it's returned to the pool.
+        var immutableProjectFiles = projectFiles.ToImmutable();
+        await StartAndReportProgressAsync(progress => projectSystem.OpenProjectsAsync(immutableProjectFiles, progress));
 
-        async Task StartAndReportProgressAsync(Func<Task> loadOperation)
+        async Task StartAndReportProgressAsync(Func<IProgress<ProjectLoadProgress>, Task> loadOperation)
         {
             var workDoneProgressManager = context.GetRequiredLspService<WorkDoneProgressManager>();
 
@@ -105,16 +108,66 @@ internal sealed class AutoLoadProjectsInitializer(
                 {
                     try
                     {
-                        await loadOperation();
+                        progressReporter.Report(new WorkDoneProgressBegin
+                        {
+                            Title = "Loading projects",
+                            Percentage = 0,
+                        });
+
+                        // Use a synchronous IProgress<T> implementation instead of System.Progress<T>.
+                        // System.Progress<T> posts callbacks to the captured SynchronizationContext (or the
+                        // thread pool when null), which can cause progress reports to arrive out-of-order
+                        // or after WorkDoneProgressEnd.
+                        var progress = new SynchronousProgress<ProjectLoadProgress>(p =>
+                        {
+                            progressReporter.Report(new WorkDoneProgressReport
+                            {
+                                Message = $"{p.CompletedCount}/{p.TotalCount} projects",
+                                Percentage = p.Percentage,
+                            });
+                        });
+
+                        await loadOperation(progress);
+
+                        progressReporter.Report(new WorkDoneProgressEnd
+                        {
+                            Message = "Projects loaded",
+                        });
                     }
                     catch (Exception ex) when (FatalError.ReportAndCatch(ex))
                     {
+                        // Ensure the client receives an end notification even on failure,
+                        // otherwise it will hang waiting for the progress to complete.
+                        progressReporter.Report(new WorkDoneProgressEnd
+                        {
+                            Message = "Failed to load projects",
+                        });
                     }
                     finally
                     {
                         progressReporter.Dispose();
                     }
                 }, CancellationToken.None).Forget();
+        }
+    }
+
+    /// <summary>
+    /// An <see cref="IProgress{T}"/> implementation that invokes the callback synchronously
+    /// on the calling thread, unlike <see cref="Progress{T}"/> which posts to the
+    /// captured <see cref="SynchronizationContext"/>. Exceptions from the handler are
+    /// caught and reported to avoid crashing the parallel project load pipeline.
+    /// </summary>
+    private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value)
+        {
+            try
+            {
+                handler(value);
+            }
+            catch (Exception ex) when (FatalError.ReportAndCatch(ex))
+            {
+            }
         }
     }
 

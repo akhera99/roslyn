@@ -180,6 +180,11 @@ internal abstract class LanguageServerProjectLoader
 
                     if (projectRestorePath is not null)
                         produceItem(projectRestorePath);
+
+                    // Report per-project progress using the per-operation state
+                    // attached to this work item. NeedsReload-enqueued items and
+                    // items from callers without a progress reporter have null state.
+                    projectToLoad.ProgressState?.ReportCompleted(projectToLoad.Path);
                 },
                 args: (@this: this, toastErrorReporter, buildHostProcessManager),
                 cancellationToken).ConfigureAwait(false);
@@ -384,7 +389,7 @@ internal abstract class LanguageServerProjectLoader
 
             var loadedProject = new LoadedProject(projectSystemProject, projectFactory, _fileChangeWatcher, _workspaceFactory.TargetFrameworkManager);
             loadedProject.NeedsReload += (_, _) =>
-                _projectsToReload.AddWork(projectToLoad with { ReportTelemetry = false });
+                _projectsToReload.AddWork(projectToLoad with { ReportTelemetry = false, ProgressState = null });
             return (loadedProject, alreadyExists: false);
         }
 
@@ -470,6 +475,39 @@ internal abstract class LanguageServerProjectLoader
 
             _loadedProjects.Add(projectPath, new ProjectLoadState.LoadedTargets(LoadedProjectTargets: []));
             _projectsToReload.AddWork(new ProjectToLoad(Path: projectPath, ProjectGuid: projectGuid, ReportTelemetry: true));
+        }
+    }
+
+    /// <summary>
+    /// Enqueues multiple projects for loading under a single gate acquisition, filtering out
+    /// duplicates and already-loaded projects. Creates a <see cref="LoadProgressState"/> with
+    /// an accurate total count based on the projects actually enqueued.
+    /// </summary>
+    protected async Task BeginLoadingProjectsWithProgressAsync(
+        ImmutableArray<(string path, string? guid)> projects,
+        IProgress<ProjectLoadProgress>? progress)
+    {
+        using (await _gate.DisposableWaitAsync(CancellationToken.None))
+        {
+            using var _ = ArrayBuilder<ProjectToLoad>.GetInstance(out var accepted);
+
+            foreach (var (path, guid) in projects)
+            {
+                if (_loadedProjects.ContainsKey(path))
+                    continue;
+
+                _loadedProjects.Add(path, new ProjectLoadState.LoadedTargets(LoadedProjectTargets: []));
+                accepted.Add(new ProjectToLoad(Path: path, ProjectGuid: guid, ReportTelemetry: true));
+            }
+
+            var progressState = progress is not null && accepted.Count > 0
+                ? new LoadProgressState(progress, accepted.Count)
+                : null;
+
+            foreach (var project in accepted)
+            {
+                _projectsToReload.AddWork(project with { ProgressState = progressState });
+            }
         }
     }
 

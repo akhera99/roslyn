@@ -52,29 +52,28 @@ internal sealed class LanguageServerProjectSystem : LanguageServerProjectLoader
         _projectFileExtensionRegistry = new ProjectFileExtensionRegistry(new DiagnosticReporter(workspace));
     }
 
-    public async Task OpenSolutionAsync(string solutionFilePath)
+    public async Task OpenSolutionAsync(string solutionFilePath, IProgress<ProjectLoadProgress>? progress = null)
     {
         _logger.LogInformation(string.Format(LanguageServerResources.Loading_0, solutionFilePath));
         _hostProjectFactory.SolutionPath = solutionFilePath;
 
         var (_, projects) = await SolutionFileReader.ReadSolutionFileAsync(solutionFilePath, DiagnosticReportingMode.Throw, CancellationToken.None);
-        foreach (var (path, guid) in projects)
-        {
-            await BeginLoadingProjectAsync(path, guid);
-        }
+
+        await BeginLoadingProjectsWithProgressAsync(
+            projects.SelectAsArray(p => (p.ProjectPath, (string?)p.ProjectGuid)),
+            progress);
         await WaitForProjectsToFinishLoadingAsync();
         await ProjectInitializationHandler.SendProjectInitializationCompleteNotificationAsync();
     }
 
-    public async Task OpenProjectsAsync(ImmutableArray<string> projectFilePaths)
+    public async Task OpenProjectsAsync(ImmutableArray<string> projectFilePaths, IProgress<ProjectLoadProgress>? progress = null)
     {
-        if (!projectFilePaths.Any())
+        if (projectFilePaths.IsEmpty)
             return;
 
-        foreach (var path in projectFilePaths)
-        {
-            await BeginLoadingProjectAsync(path, projectGuid: null);
-        }
+        await BeginLoadingProjectsWithProgressAsync(
+            projectFilePaths.SelectAsArray(p => (p, (string?)null)),
+            progress);
         await WaitForProjectsToFinishLoadingAsync();
         await ProjectInitializationHandler.SendProjectInitializationCompleteNotificationAsync();
     }
