@@ -477,6 +477,11 @@
         <target state="translated">struktura rekordów</target>
         <note />
       </trans-unit>
+      <trans-unit id="region_directive">
+        <source>region directive</source>
+        <target state="new">region directive</target>
+        <note>{Locked="#region"} "#region" is a C# preprocessor directive and should not be localized.</note>
+      </trans-unit>
       <trans-unit id="required_property">
         <source>required property</source>
         <target state="translated">wymagana właściwość</target>

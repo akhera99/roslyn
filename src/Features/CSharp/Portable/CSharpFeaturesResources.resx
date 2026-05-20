@@ -640,4 +640,8 @@
   <data name="unsafe_block" xml:space="preserve">
     <value>unsafe block</value>
   </data>
+  <data name="region_directive" xml:space="preserve">
+    <value>region directive</value>
+    <comment>{Locked="#region"} "#region" is a C# preprocessor directive and should not be localized.</comment>
+  </data>
 </root>
