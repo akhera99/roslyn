@@ -89,6 +89,6 @@ internal sealed record class CompletionOptions
         }
 
         // Don't trigger snippet completion if the option value is "default" and the experiment is disabled for the user. 
-        return ShowNewSnippetExperienceUserOption ?? ShowNewSnippetExperienceFeatureFlag;
+        return true;
     }
 }

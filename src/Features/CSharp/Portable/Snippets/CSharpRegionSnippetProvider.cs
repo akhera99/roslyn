@@ -8,11 +8,11 @@ using System.Composition;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Extensions.ContextQuery;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.LanguageService;
 using Microsoft.CodeAnalysis.Shared.Extensions;
-using Microsoft.CodeAnalysis.Shared.Extensions.ContextQuery;
 using Microsoft.CodeAnalysis.Snippets;
 using Microsoft.CodeAnalysis.Snippets.SnippetProviders;
 using Microsoft.CodeAnalysis.Text;
@@ -22,27 +22,23 @@ namespace Microsoft.CodeAnalysis.CSharp.Snippets;
 [ExportSnippetProvider(nameof(ISnippetProvider), LanguageNames.CSharp), Shared]
 [method: ImportingConstructor]
 [method: Obsolete(MefConstruction.ImportingConstructorMessage, error: true)]
-internal sealed class CSharpRegionSnippetProvider() : ISnippetProvider
+internal sealed class CSharpRegionSnippetProvider() : AbstractSingleChangeSnippetProvider<RegionDirectiveTriviaSyntax>
 {
     private const string RegionNamePlaceholder = "MyRegion";
 
-    public string Identifier => CSharpSnippetIdentifiers.Region;
+    public override string Identifier => CSharpSnippetIdentifiers.Region;
 
-    public string Description => CSharpFeaturesResources.region_directive;
+    public override string Description => CSharpFeaturesResources.region_directive;
 
-    public ImmutableArray<string> AdditionalFilterTexts => ["region"];
+    public override ImmutableArray<string> AdditionalFilterTexts => ["region"];
 
-    public bool IsValidSnippetLocation(SnippetContext context, CancellationToken cancellationToken)
+    protected override bool IsValidSnippetLocationCore(SnippetContext context, CancellationToken cancellationToken)
     {
-        var syntaxFacts = context.Document.GetRequiredLanguageService<ISyntaxFactsService>();
-        if (syntaxFacts.IsInNonUserCode(context.SyntaxContext.SyntaxTree, context.Position, cancellationToken))
-            return false;
-
         var syntaxContext = (CSharpSyntaxContext)context.SyntaxContext;
         return syntaxContext.IsPreProcessorKeywordContext;
     }
 
-    public async Task<SnippetChange> GetSnippetChangeAsync(
+    protected override async Task<TextChange> GenerateSnippetTextChangeAsync(
         Document document, int position, CancellationToken cancellationToken)
     {
         var text = await document.GetValueTextAsync(cancellationToken).ConfigureAwait(false);
@@ -52,7 +48,9 @@ internal sealed class CSharpRegionSnippetProvider() : ISnippetProvider
         var line = text.Lines.GetLineFromPosition(position);
         var lineText = text.ToString(line.Span);
 
-        // Find the # on this line and replace from there.
+        // Find the # on this line. In preprocessor keyword context, the # is already
+        // in the document. Extend the replacement span to include it so we produce
+        // a single well-formed #region / #endregion pair.
         var hashIndexInLine = lineText.IndexOf('#');
         int startPosition;
         string indentation;
@@ -69,21 +67,45 @@ internal sealed class CSharpRegionSnippetProvider() : ISnippetProvider
         }
 
         var snippetText = $"#region {RegionNamePlaceholder}{newLine}{newLine}{indentation}#endregion";
-        var change = new TextChange(TextSpan.FromBounds(startPosition, position), snippetText);
 
-        // Apply to compute positions in the resulting text.
-        var newText = text.WithChanges(change);
+        return new TextChange(TextSpan.FromBounds(startPosition, position), snippetText);
+    }
 
-        // "MyRegion" starts right after "#region " in the inserted text.
-        var regionNameStart = startPosition + "#region ".Length;
+    protected override RegionDirectiveTriviaSyntax? FindAddedSnippetSyntaxNode(SyntaxNode root, int position)
+    {
+        // Preprocessor directives are structured trivia, so the base class's
+        // FindNode won't locate them. Use FindToken with findInsideTrivia to
+        // reach into the directive's token tree.
+        var token = root.FindToken(position, findInsideTrivia: true);
+        return token.Parent as RegionDirectiveTriviaSyntax
+            ?? token.Parent?.FirstAncestorOrSelf<RegionDirectiveTriviaSyntax>();
+    }
 
-        // Caret goes on the blank line between #region and #endregion.
-        var regionLineNumber = newText.Lines.GetLineFromPosition(startPosition).LineNumber;
-        var caretPosition = newText.Lines[regionLineNumber + 1].Span.End;
+    protected override ValueTask<ImmutableArray<SnippetPlaceholder>> GetPlaceHolderLocationsListAsync(
+        Document document, RegionDirectiveTriviaSyntax node, ISyntaxFacts syntaxFacts, CancellationToken cancellationToken)
+    {
+        // The region name text lives as PreprocessingMessageTrivia on the EndOfDirectiveToken.
+        var endOfDirective = node.EndOfDirectiveToken;
+        foreach (var trivia in endOfDirective.LeadingTrivia)
+        {
+            if (trivia.Kind() == SyntaxKind.PreprocessingMessageTrivia)
+            {
+                return new([new SnippetPlaceholder(trivia.ToString(), trivia.SpanStart)]);
+            }
+        }
 
-        return new SnippetChange(
-            textChanges: [change],
-            placeholders: [new SnippetPlaceholder(RegionNamePlaceholder, regionNameStart)],
-            finalCaretPosition: caretPosition);
+        return new([]);
+    }
+
+    protected override int GetTargetCaretPosition(
+        RegionDirectiveTriviaSyntax regionDirective, SourceText sourceText)
+    {
+        // Place the caret on the blank line between #region and #endregion.
+        var regionLine = sourceText.Lines.GetLineFromPosition(regionDirective.SpanStart);
+        var nextLineNumber = regionLine.LineNumber + 1;
+        if (nextLineNumber < sourceText.Lines.Count)
+            return sourceText.Lines[nextLineNumber].Span.End;
+
+        return regionDirective.FullSpan.End;
     }
 }

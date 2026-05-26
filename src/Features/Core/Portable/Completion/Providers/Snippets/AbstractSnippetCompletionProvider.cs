@@ -24,6 +24,32 @@ internal abstract class AbstractSnippetCompletionProvider : CompletionProvider
         // This retrieves the document without the text used to invoke completion
         // as well as the new cursor position after that has been removed.
         var (strippedDocument, position) = await GetDocumentWithoutInvokingTextAsync(document, SnippetCompletionItem.GetInvocationPosition(item), cancellationToken).ConfigureAwait(false);
+
+        // For preprocessor snippets the editor's format-on-type may have moved
+        // the # away from where the user typed it. Restore the original line
+        // indentation so the snippet is generated at the user's invocation point.
+        var originalIndentation = SnippetCompletionItem.GetLineIndentation(item);
+        if (originalIndentation is not null)
+        {
+            var currentText = await strippedDocument.GetValueTextAsync(cancellationToken).ConfigureAwait(false);
+            var line = currentText.Lines.GetLineFromPosition(position);
+            var currentLineText = currentText.ToString(line.Span);
+            var hashIndex = currentLineText.IndexOf('#');
+            if (hashIndex >= 0)
+            {
+                var currentIndentation = currentLineText[..hashIndex];
+                if (currentIndentation != originalIndentation)
+                {
+                    // Replace the line's leading whitespace up to # with the original indentation.
+                    var indentSpan = TextSpan.FromBounds(line.Start, line.Start + hashIndex);
+                    currentText = currentText.WithChanges(new TextChange(indentSpan, originalIndentation));
+                    strippedDocument = strippedDocument.WithText(currentText);
+                    // Adjust position: it was right after #, which shifted by the indentation difference.
+                    position = line.Start + originalIndentation.Length + (position - line.Start - hashIndex);
+                }
+            }
+        }
+
         var service = strippedDocument.GetRequiredLanguageService<ISnippetService>();
         var snippetIdentifier = SnippetCompletionItem.GetSnippetIdentifier(item);
         var snippetProvider = service.GetSnippetProvider(snippetIdentifier);
@@ -84,6 +110,21 @@ internal abstract class AbstractSnippetCompletionProvider : CompletionProvider
         var snippetContext = new SnippetContext(syntaxContext);
         var snippets = service.GetSnippets(snippetContext, cancellationToken);
 
+        // For preprocessor directive snippets (e.g. #region), capture the
+        // indentation of the line at trigger time. The editor's format-on-type
+        // may move the # before the snippet is committed, but we want to
+        // preserve the user's original invocation position.
+        string? lineIndentation = null;
+        if (syntaxContext.IsPreProcessorDirectiveContext)
+        {
+            var text = await document.GetValueTextAsync(cancellationToken).ConfigureAwait(false);
+            var line = text.Lines.GetLineFromPosition(position);
+            var lineText = text.ToString(line.Span);
+            var hashIndex = lineText.IndexOf('#');
+            if (hashIndex >= 0)
+                lineIndentation = lineText[..hashIndex];
+        }
+
         foreach (var snippetData in snippets)
         {
             var completionItem = SnippetCompletionItem.Create(
@@ -94,7 +135,8 @@ internal abstract class AbstractSnippetCompletionProvider : CompletionProvider
                 glyph: Glyph.Snippet,
                 description: (snippetData.Description + Environment.NewLine + string.Format(FeaturesResources.Code_snippet_for_0, snippetData.Description)).ToSymbolDisplayParts(),
                 inlineDescription: snippetData.Description,
-                additionalFilterTexts: snippetData.AdditionalFilterTexts);
+                additionalFilterTexts: snippetData.AdditionalFilterTexts,
+                lineIndentation: lineIndentation);
             context.AddItem(completionItem);
         }
     }

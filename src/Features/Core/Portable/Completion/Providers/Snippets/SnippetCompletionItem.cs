@@ -11,6 +11,7 @@ internal sealed class SnippetCompletionItem
 {
     public static string LSPSnippetKey = "LSPSnippet";
     public static string SnippetIdentifierKey = "SnippetIdentifier";
+    private static string LineIndentationKey = "LineIndentation";
 
     public static CompletionItem Create(
         string displayText,
@@ -20,8 +21,18 @@ internal sealed class SnippetCompletionItem
         Glyph glyph,
         ImmutableArray<SymbolDisplayPart> description,
         string inlineDescription,
-        ImmutableArray<string> additionalFilterTexts)
+        ImmutableArray<string> additionalFilterTexts,
+        string? lineIndentation = null)
     {
+        var properties = new List<KeyValuePair<string, string>>
+        {
+            KeyValuePair.Create("Position", position.ToString()),
+            KeyValuePair.Create(SnippetIdentifierKey, snippetIdentifier)
+        };
+
+        if (lineIndentation is not null)
+            properties.Add(KeyValuePair.Create(LineIndentationKey, lineIndentation));
+
         return CommonCompletionItem.Create(
             displayText: displayText,
             displayTextSuffix: displayTextSuffix,
@@ -30,9 +41,7 @@ internal sealed class SnippetCompletionItem
             // Adding a space after the identifier string that way it will always be sorted after a keyword.
             sortText: snippetIdentifier + " ",
             filterText: snippetIdentifier,
-            properties: [
-                KeyValuePair.Create("Position", position.ToString()),
-                KeyValuePair.Create(SnippetIdentifierKey, snippetIdentifier)],
+            properties: [.. properties],
             isComplexTextEdit: true,
             inlineDescription: inlineDescription,
             rules: CompletionItemRules.Default)
@@ -55,5 +64,11 @@ internal sealed class SnippetCompletionItem
     public static bool IsSnippet(CompletionItem item)
     {
         return item.TryGetProperty(SnippetIdentifierKey, out var _);
+    }
+
+    public static string? GetLineIndentation(CompletionItem item)
+    {
+        item.TryGetProperty(LineIndentationKey, out var indentation);
+        return indentation;
     }
 }
