@@ -184,51 +184,13 @@ internal abstract class AbstractRemoveUnnecessaryInlineSuppressionsDiagnosticAna
         // Compute all the reported compiler and analyzer diagnostics for diagnostic IDs corresponding to pragmas in the tree.
         var (diagnostics, unhandledIds) = await GetReportedDiagnosticsForIdsAsync(
             idsToAnalyze, root, semanticModel, compilationWithAnalyzers,
-            getSupportedDiagnostics, compilerDiagnosticIds, useFullCompilationAnalysis: false, cancellationToken).ConfigureAwait(false);
+            getSupportedDiagnostics, compilerDiagnosticIds, cancellationToken).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
 
         // Iterate through reported diagnostics which are suppressed in source through pragmas and mark the corresponding pragmas as used.
         await ProcessReportedDiagnosticsAsync(diagnostics, tree, compilationWithAnalyzers, idToPragmasMap,
             pragmasToIsUsedMap, idToSuppressMessageAttributesMap, suppressMessageAttributesToIsUsedMap, cancellationToken).ConfigureAwait(false);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Some analyzers (e.g. CA1859) report diagnostics from SymbolEnd or CompilationEnd actions and may not surface those
-        // diagnostics through a document-scope analysis. To avoid false IDE0079 reports against suppressions for such
-        // diagnostics, re-run analysis for only the IDs whose suppressions are still considered unused, this time using
-        // a full-compilation analysis which guarantees SymbolEnd/CompilationEnd actions have executed. This pays the cost
-        // of full-compilation analysis only when document-scope analysis was insufficient.
-        // See https://github.com/dotnet/roslyn/issues/83970.
-        using (var _9 = PooledHashSet<string>.GetInstance(out var remainingIdsToAnalyze))
-        {
-            AddUnusedIdsForPragmas(idToPragmasMap, pragmasToIsUsedMap, unhandledIds, remainingIdsToAnalyze);
-            AddUnusedIdsForSuppressMessageAttributes(idToSuppressMessageAttributesMap, suppressMessageAttributesToIsUsedMap, unhandledIds, remainingIdsToAnalyze);
-
-            if (remainingIdsToAnalyze.Count > 0)
-            {
-                var (fullCompilationDiagnostics, fullCompilationUnhandledIds) = await GetReportedDiagnosticsForIdsAsync(
-                    remainingIdsToAnalyze.ToImmutableHashSet(), root, semanticModel, compilationWithAnalyzers,
-                    getSupportedDiagnostics, compilerDiagnosticIds, useFullCompilationAnalysis: true, cancellationToken).ConfigureAwait(false);
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                await ProcessReportedDiagnosticsAsync(fullCompilationDiagnostics, tree, compilationWithAnalyzers, idToPragmasMap,
-                    pragmasToIsUsedMap, idToSuppressMessageAttributesMap, suppressMessageAttributesToIsUsedMap, cancellationToken).ConfigureAwait(false);
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Aggregate unhandled ids from both passes so we don't report IDE0079 for IDs that no relevant
-                // non-unhandled analyzer claims.
-                if (!fullCompilationUnhandledIds.IsEmpty)
-                {
-                    var combinedUnhandledBuilder = ArrayBuilder<string>.GetInstance(unhandledIds.Length + fullCompilationUnhandledIds.Length);
-                    combinedUnhandledBuilder.AddRange(unhandledIds);
-                    combinedUnhandledBuilder.AddRange(fullCompilationUnhandledIds);
-                    unhandledIds = combinedUnhandledBuilder.ToImmutableAndFree();
-                }
-            }
-        }
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -424,56 +386,6 @@ internal abstract class AbstractRemoveUnnecessaryInlineSuppressionsDiagnosticAna
         return (userIdExclusions: idBuilder.ToImmutable(), userCategoryExclusions: categoryBuilder.ToImmutable(), analyzerDisabled: false);
     }
 
-    private static void AddUnusedIdsForPragmas(
-        PooledDictionary<string, List<(SyntaxTrivia pragma, bool isDisable)>> idToPragmasMap,
-        PooledDictionary<SyntaxTrivia, bool> pragmasToIsUsedMap,
-        ImmutableArray<string> unhandledIds,
-        PooledHashSet<string> remainingIds)
-    {
-        var unhandled = unhandledIds.IsDefaultOrEmpty ? null : unhandledIds.ToImmutableHashSet();
-        foreach (var (id, pragmas) in idToPragmasMap)
-        {
-            if (unhandled != null && unhandled.Contains(id))
-            {
-                continue;
-            }
-
-            foreach (var (pragma, _) in pragmas)
-            {
-                if (pragmasToIsUsedMap.TryGetValue(pragma, out var isUsed) && !isUsed)
-                {
-                    remainingIds.Add(id);
-                    break;
-                }
-            }
-        }
-    }
-
-    private static void AddUnusedIdsForSuppressMessageAttributes(
-        PooledDictionary<string, List<SyntaxNode>> idToSuppressMessageAttributesMap,
-        PooledDictionary<SyntaxNode, bool> suppressMessageAttributesToIsUsedMap,
-        ImmutableArray<string> unhandledIds,
-        PooledHashSet<string> remainingIds)
-    {
-        var unhandled = unhandledIds.IsDefaultOrEmpty ? null : unhandledIds.ToImmutableHashSet();
-        foreach (var (id, attributeNodes) in idToSuppressMessageAttributesMap)
-        {
-            if (unhandled != null && unhandled.Contains(id))
-            {
-                continue;
-            }
-
-            foreach (var attributeNode in attributeNodes)
-            {
-                if (suppressMessageAttributesToIsUsedMap.TryGetValue(attributeNode, out var isUsed) && !isUsed)
-                {
-                    remainingIds.Add(id);
-                    break;
-                }
-            }
-        }
-    }
-
     private static async Task<(ImmutableArray<Diagnostic> reportedDiagnostics, ImmutableArray<string> unhandledIds)> GetReportedDiagnosticsForIdsAsync(
         ImmutableHashSet<string> idsToAnalyze,
         SyntaxNode root,
@@ -481,7 +393,6 @@ internal abstract class AbstractRemoveUnnecessaryInlineSuppressionsDiagnosticAna
         CompilationWithAnalyzers compilationWithAnalyzers,
         Func<DiagnosticAnalyzer, ImmutableArray<DiagnosticDescriptor>> getSupportedDiagnostics,
         PooledHashSet<string> compilerDiagnosticIds,
-        bool useFullCompilationAnalysis,
         CancellationToken cancellationToken)
     {
         using var _1 = ArrayBuilder<DiagnosticAnalyzer>.GetInstance(out var analyzersBuilder);
@@ -518,7 +429,7 @@ internal abstract class AbstractRemoveUnnecessaryInlineSuppressionsDiagnosticAna
                         continue;
                     }
 
-                    lazyIsUnhandledAnalyzer ??= descriptor.IsCompilationEnd() || analyzer is IPragmaSuppressionsAnalyzer;
+                    lazyIsUnhandledAnalyzer ??= analyzer is IPragmaSuppressionsAnalyzer;
                     if (lazyIsUnhandledAnalyzer.Value)
                     {
                         unhandledIds.Add(descriptor.Id);
@@ -550,47 +461,22 @@ internal abstract class AbstractRemoveUnnecessaryInlineSuppressionsDiagnosticAna
         {
             var analyzers = analyzersBuilder.ToImmutable();
 
-            if (useFullCompilationAnalysis)
+            // Use full-compilation analysis so that diagnostics reported by analyzers via SymbolEnd or
+            // CompilationEnd actions (e.g. CA1859) are included. Document-scope analysis can omit such diagnostics
+            var analysisResult = await compilationWithAnalyzers.GetAnalysisResultAsync(analyzers, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (analysisResult.SyntaxDiagnostics.TryGetValue(semanticModel.SyntaxTree, out var diagnostics))
             {
-                // Use full-compilation analysis so that diagnostics reported by analyzers via SymbolEnd or
-                // CompilationEnd actions (e.g. CA1859) are included. Document-scope semantic analysis can
-                // omit such diagnostics (see remarks on CompilationWithAnalyzers.GetAnalysisResultAsync(SemanticModel, ...)),
-                // which previously caused IDE0079 to falsely report SuppressMessage attributes as unnecessary.
-                // In steady state this is a cache lookup, since the IDE drives full-compilation analysis
-                // through this CompilationWithAnalyzers instance for project diagnostics.
-                var fullAnalysisResult = await compilationWithAnalyzers.GetAnalysisResultAsync(analyzers, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (fullAnalysisResult.SyntaxDiagnostics.TryGetValue(semanticModel.SyntaxTree, out var syntaxDiagnostics))
-                {
-                    AddAllDiagnostics(syntaxDiagnostics, reportedDiagnostics);
-                }
-
-                if (fullAnalysisResult.SemanticDiagnostics.TryGetValue(semanticModel.SyntaxTree, out var semanticDiagnostics))
-                {
-                    AddAllDiagnostics(semanticDiagnostics, reportedDiagnostics);
-                }
-
-                AddAllCompilationDiagnosticsForTree(fullAnalysisResult, semanticModel.SyntaxTree, reportedDiagnostics);
+                AddAllDiagnostics(diagnostics, reportedDiagnostics);
             }
-            else
+
+            if (analysisResult.SemanticDiagnostics.TryGetValue(semanticModel.SyntaxTree, out diagnostics))
             {
-                var analysisResult = await compilationWithAnalyzers.GetAnalysisResultAsync(semanticModel.SyntaxTree, analyzers, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                if (analysisResult.SyntaxDiagnostics.TryGetValue(semanticModel.SyntaxTree, out var diagnostics))
-                {
-                    AddAllDiagnostics(diagnostics, reportedDiagnostics);
-                }
-
-                analysisResult = await compilationWithAnalyzers.GetAnalysisResultAsync(semanticModel, filterSpan: null, analyzers, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                if (analysisResult.SemanticDiagnostics.TryGetValue(semanticModel.SyntaxTree, out diagnostics))
-                {
-                    AddAllDiagnostics(diagnostics, reportedDiagnostics);
-                }
-
-                AddAllCompilationDiagnosticsForTree(analysisResult, semanticModel.SyntaxTree, reportedDiagnostics);
+                AddAllDiagnostics(diagnostics, reportedDiagnostics);
             }
+
+            AddAllCompilationDiagnosticsForTree(analysisResult, semanticModel.SyntaxTree, reportedDiagnostics);
         }
 
         return (reportedDiagnostics.ToImmutable(), unhandledIds.ToImmutable());

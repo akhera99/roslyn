@@ -167,7 +167,6 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests(ITestOutputHelper
             protected override string VariableAssignedButNotUsedDiagnosticId => UserDiagnosticAnalyzer.Descriptor0219.Id;
             protected override ImmutableArray<string> UnsupportedDiagnosticIds
                 => [
-                    CompilationEndDiagnosticAnalyzer.Descriptor.Id,
                     IDEDiagnosticIds.RemoveUnnecessarySuppressionDiagnosticId,
                     IDEDiagnosticIds.FormattingDiagnosticId,
                     "format",
@@ -1559,76 +1558,82 @@ public abstract class RemoveUnnecessaryInlineSuppressionsTests(ITestOutputHelper
                 """, new TestParameters(options: Option(CodeStyleOptions2.PreferAutoProperties, true, NotificationOption2.Warning)));
     }
 
+    #endregion
+
+    /// <summary>
+    /// Tests for analyzers that report diagnostics from SymbolEnd actions (e.g. CA1859).
+    /// </summary>
     public sealed class SymbolEndDiagnosticAnalyzerTests(ITestOutputHelper logger) : RemoveUnnecessaryInlineSuppressionsTests(logger)
     {
         internal override ImmutableArray<DiagnosticAnalyzer> OtherAnalyzers
             => [new SymbolEndDiagnosticAnalyzer()];
 
+        /// <summary>
+        /// A diagnostic analyzer that mimics CA1859's pattern: registers a SymbolStart action
+        /// on NamedType and reports diagnostics from the corresponding SymbolEnd action.
+        /// </summary>
+        [DiagnosticAnalyzer(LanguageNames.CSharp)]
         private sealed class SymbolEndDiagnosticAnalyzer : DiagnosticAnalyzer
         {
-            // Mimics the shape of CA1859: a diagnostic descriptor without the CompilationEnd tag,
-            // reported from a SymbolEnd action that fires after registered operation actions complete.
-            public static readonly DiagnosticDescriptor Descriptor =
-                new("SymbolEndId", "Title", "Message", "Category", DiagnosticSeverity.Warning, isEnabledByDefault: true);
+            public static readonly DiagnosticDescriptor Descriptor = new(
+                "SymbolEnd0001",
+                "Symbol end diagnostic",
+                "Symbol end diagnostic on '{0}'",
+                "Performance",
+                DiagnosticSeverity.Warning,
+                isEnabledByDefault: true);
 
             public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor];
 
             public override void Initialize(AnalysisContext context)
             {
-                context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
                 context.EnableConcurrentExecution();
+                context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+
                 context.RegisterSymbolStartAction(symbolStartContext =>
                 {
-                    var locations = new ConcurrentBag<Location>();
-                    symbolStartContext.RegisterOperationAction(operationContext =>
-                    {
-                        locations.Add(operationContext.Operation.Syntax.GetLocation());
-                    }, OperationKind.VariableDeclarator);
-
                     symbolStartContext.RegisterSymbolEndAction(symbolEndContext =>
                     {
-                        foreach (var location in locations)
+                        // Report on any named type that has at least one member with a local
+                        // variable of an interface type
+                        foreach (var member in ((INamedTypeSymbol)symbolEndContext.Symbol).GetMembers())
                         {
-                            symbolEndContext.ReportDiagnostic(Diagnostic.Create(Descriptor, location));
+                            if (member is IMethodSymbol method && !method.Locations.IsEmpty)
+                            {
+                                symbolEndContext.ReportDiagnostic(
+                                    Diagnostic.Create(Descriptor, method.Locations[0], method.Name));
+                            }
                         }
                     });
                 }, SymbolKind.NamedType);
             }
         }
 
-        // Using a multi-file partial type so the SymbolEnd action for the type can only complete after a
-        // full-compilation analysis. Document-scope analysis of the file containing the suppression alone
-        // never surfaces the SymbolEnd diagnostic, which previously caused IDE0079 to incorrectly flag the
-        // suppression as unnecessary.
         [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83970")]
         public Task TestDoNotRemoveSuppressionForSymbolEndDiagnostic()
             => TestMissingInRegularAndScriptAsync(
                 """
-                <Workspace>
-                    <Project Language="C#" CommonReferences="true">
-                        <Document><![CDATA[
-                partial class C
+                class C
                 {
-                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Category", "SymbolEndId")]|]
+                    [|[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "SymbolEnd0001", Justification = "Intentional")]|]
                     void M()
                     {
-                        int x = 1;
                     }
                 }
-                ]]></Document>
-                        <Document><![CDATA[
-                partial class C
+                """);
+
+        [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/83970")]
+        public Task TestDoNotRemoveSuppressionForSymbolEndDiagnostic_Pragma()
+            => TestMissingInRegularAndScriptAsync(
+                """
+                class C
                 {
-                    void Other()
+                    [|#pragma warning disable SymbolEnd0001 // Symbol end diagnostic|]
+                    void M()
                     {
-                        int y = 1;
                     }
+                    #pragma warning restore SymbolEnd0001
                 }
-                ]]></Document>
-                    </Project>
-                </Workspace>
                 """);
     }
-
-    #endregion
 }
