@@ -1,7 +1,22 @@
 # Roslyn VS integration test gate pipeline for real-signed Visual Studio builds.
 
+# No CI (push) builds.
 trigger: none
-pr: none
+
+# A `pr:` block (not `pr: none`) is required so this pipeline can be launched from a
+# GitHub PR by an authorized user commenting `/azp run <pipeline-name>`. This replaces
+# the former `.github/workflows/pr-validation.yml` GitHub Actions launcher (and the Corp
+# tenant Federated Identity Credential it relied on) for the old `/dart` command.
+#
+# IMPORTANT: In the pipeline's Triggers settings in Azure DevOps, enable
+# "Override the YAML pull request trigger from here" and DISABLE automatic pull request
+# validation so this only ever runs when an authorized user comments `/azp run`.
+pr:
+  branches:
+    include:
+    - main
+    - release/*
+    - feature/*
 
 resources:
   repositories:
@@ -17,15 +32,24 @@ resources:
     endpoint: dnceng-internal-code-access
     type: git
     name: internal/dotnet-roslyn
-    ref: $(Build.SourceBranch)
+    # The build runs on the PR's base (target) branch of the internal mirror, then
+    # setup-pr-validation.ps1 fetches the PR head/merge from GitHub by PR number. Under a
+    # native GitHub PR trigger `Build.SourceBranch` is `refs/pull/N/merge` (which does not
+    # exist in the mirror), so check out the PR's target branch instead. This variable is
+    # only populated for PR runs, so this pipeline is expected to be launched from a PR
+    # (via `/azp run`); manual non-PR runs must specify a valid mirror ref.
+    ref: $(System.PullRequest.TargetBranch)
 
 parameters:
+  # When launched via `/azp run`, no template parameters are supplied, so prNumber/sha
+  # fall back to the built-in PR variables that Azure Pipelines populates for GitHub PR
+  # runs. Explicit values (manual "Run pipeline") still override these defaults.
   - name: prNumber
     type: string
-    default: 'None'
+    default: $(System.PullRequest.PullRequestNumber)
   - name: sha
     type: string
-    default: 'None'
+    default: $(System.PullRequest.SourceCommitId)
   - name: EnforceLatestCommit
     type: boolean
     default: true

@@ -1,5 +1,23 @@
+# No CI (push) builds.
 trigger: none
-pr: none
+
+# A `pr:` block (not `pr: none`) is required so this pipeline can be launched from a
+# GitHub PR by an authorized user commenting `/azp run <pipeline-name>`. This replaces
+# the former `.github/workflows/pr-validation.yml` GitHub Actions launcher (and the Corp
+# tenant Federated Identity Credential it relied on).
+#
+# IMPORTANT: These are heavyweight build+insertion runs, so they must NOT build on every
+# PR push. In the pipeline's Triggers settings in Azure DevOps, enable
+# "Override the YAML pull request trigger from here" and DISABLE automatic pull request
+# validation. That leaves comment-based `/azp run` as the only way to launch a run, which
+# preserves the opt-in behavior of the old `/pr-val` command. Only GitHub users with
+# write access can successfully use `/azp run`.
+pr:
+  branches:
+    include:
+    - main
+    - release/*
+    - feature/*
 
 resources:
   repositories:
@@ -9,10 +27,16 @@ resources:
     ref: refs/tags/release
 
 parameters:
+# When launched via `/azp run`, no template parameters are supplied, so PRNumber/CommitSHA
+# fall back to the built-in PR variables that Azure Pipelines populates for GitHub PR runs.
+# Explicit values (manual "Run pipeline" or a REST queue) still override these defaults.
+# PRNumber is a string (not number) so it can hold the `$(System.PullRequest.*)` macro.
 - name: PRNumber
-  type: number
+  type: string
+  default: $(System.PullRequest.PullRequestNumber)
 - name: CommitSHA
   type: string
+  default: $(System.PullRequest.SourceCommitId)
 - name: EnforceLatestCommit
   type: boolean
   default: true
